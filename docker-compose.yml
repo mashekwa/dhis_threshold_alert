@@ -1,0 +1,70 @@
+services:
+  scheduler:
+    build: .
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+      - DHIS2_BASE_URL=${DHIS2_BASE_URL}
+      - DHIS2_USERNAME=${DHIS2_USERNAME}
+      - DHIS2_PASSWORD=${DHIS2_PASSWORD}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - DATA_ELEMENTS=${DATA_ELEMENTS}
+      - PARENT_ORG_UNITS=${PARENT_ORG_UNITS}
+      - LAST_N_WEEKS=${LAST_N_WEEKS}
+      - TZ=Africa/Harare
+    depends_on:
+      redis:
+        condition: service_healthy
+      pgdb:
+        condition: service_healthy
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 30s
+      retries: 50
+
+
+  pgdb:
+    image: postgres
+    container_name: pgdb
+    environment:
+      - POSTGRES_DB=alert_app
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data:rw
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    restart: always
+    ports:
+      - "8888:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@mail.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      pgdb:
+        condition: service_healthy
+  
+volumes:
+  pgadmin-data:
+  pgdata:
+
+  

@@ -1,0 +1,12 @@
+flask
+celery
+redis
+python-dotenv
+requests
+pandas==2.2.3
+dhis2.py
+python-decouple
+SQLAlchemy
+fastparquet
+pyarrow
+psycopg2
