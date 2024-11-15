@@ -39,26 +39,9 @@ def get_last_n_weeks():
     return [(current_date - timedelta(weeks=i)).strftime('%Y%m%d') for i in range(LAST_N_WEEKS)]
 
 
-@celery_app.task(name='return_something')
-def return_something():
-    logger.info("Its working")
-    logger.info(api)
-
-
 @celery_app.task(name='get_users')
 def get_users():
     fetch_users_and_save_details(DHIS2_BASE_URL, DHIS2_USERNAME, DHIS2_PASSWORD, user_group_id)
-
-
-# DEFINE CELERY TASK FOR THRESHOLD ANALYSIS
-# Diseases configuration from environment
-def one_case_threshold():
-    one_suspected_diseases = config('one_suspected_diseases').split(',')
-    doubling_cases_diseases = config('doubling_cases_diseases').split(',')
-    increase_1_5x_diseases = config('1_5x_increase_diseases').split(',')
-    cluster_of_diseases = config('cluster_of_diseases').split(',')
-
-
 
 @celery_app.task(name='run_alerts')
 def run_alerts():
@@ -81,14 +64,14 @@ def run_alerts():
             # df_with_names.to_csv("./data/df_with_name.csv")
             logger.info(f"DATA COUNT........{len(df_with_names)}")
             # Call alert functions
-            # one_suspected_case(df_with_names, one_suspected_diseases)
+            one_suspected_case(df_with_names, one_suspected_diseases)
             # get_double_cases(df_with_names, doubling_cases_diseases)
             # check_1_5x_increase(df_with_names, increase_1_5x_diseases)
             
-            # For clusters of diseases
-            for item in cluster_of_diseases:
-                disease, num = item.split('_')
-                cluster_of_cases(df_with_names, disease, int(num))
+            #For clusters of diseases
+            # for item in cluster_of_diseases:
+            #     disease, num = item.split('_')
+            #     cluster_of_cases(df_with_names, disease, int(num))
 
     else:
         logger.error("Failed to fetch data; alerts not run.")

@@ -2,6 +2,7 @@ try:
     from flask import Flask
     from celery import Celery
     from datetime import timedelta
+    from celery.schedules import crontab
 except Exception as e:
     print("Error : {} ".format(e))
 
@@ -26,18 +27,14 @@ app.config['CELERY_BROKER_URL'] = "redis://redis:6379/0"
 app.config['broker_connection_retry_on_startup'] = True
 
 app.config['beat_schedule'] = {
-    # 'say-every-5-seconds': {
-    #     'task': 'return_something',
-    #     'schedule': timedelta(seconds=10)
-    # },
     'get-dhis-data-every-5-minutes': {
         'task': 'run_alerts',
         'schedule': timedelta(minutes=2)
     },
-    'get-users': {
-        'task': 'get_users',
-        'schedule': timedelta(minutes=5)
-    },
+    # 'get-users': {
+    #     'task': 'get_users',
+    #     'schedule': timedelta(minutes=1)
+    # },
 
 }
 
@@ -47,4 +44,4 @@ app.config['timezone'] = 'Africa/Harare'
 celery_app = make_celery(app)
 
 # Import tasks after celery_app is defined
-from .tasks import return_something, run_alerts, get_users
+from .tasks import run_alerts, get_users

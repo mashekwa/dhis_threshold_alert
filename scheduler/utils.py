@@ -14,6 +14,11 @@ import json
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import logging
+from celery import shared_task
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # PROD eIDSR CREDENTIALS
 prod_user = config('DHIS2_USERNAME')
@@ -21,6 +26,11 @@ prod_password = config('DHIS2_PASSWORD')
 prod_url = config('DHIS2_BASE_URL')
 rootOUS = config('PARENT_ORG_UNITS') # Root Org Unit UID (COUNTRY)
 dataSet = config('DATASET') # UID of IDSR dataSet
+
+# SMS CONFIGS
+sms_url= config('sms_url')
+sms_user= config('sms_user')
+sms_cert= config('sms_cert')
 
 
 # Load the PostgreSQL connection string from the .env file
@@ -58,12 +68,19 @@ class Alert(Base):
     week = Column(String)
     status = Column(String)
 
+
+class Location(Base):
+    __tablename__ = 'locations'
+    province = Column(String)
+    district = Column(String)
+    district_id = Column(String, primary_key=True)
+
 # Create the table if it doesn't exist
 Base.metadata.create_all(engine)
 
-# Create the alerts table if it doesn't exist
-def create_alert_tbl():
-    Base.metadata.create_all(engine)
+# # Create the alerts table if it doesn't exist
+# def create_alert_tbl():
+#     Base.metadata.create_all(engine)
 
 # 1. Fetch users in the group
 def get_users_in_group(dhis_url, username, password, user_group_id):
@@ -78,7 +95,7 @@ def get_users_in_group(dhis_url, username, password, user_group_id):
 
 # 2. Get user details (org unit, phone, email, telegram)
 def get_user_details(user_id, dhis_url, username, password):
-    print(f"Fetching details for user: {user_id}")
+    #print(f"Fetching details for user: {user_id}")
     url = f"{dhis_url}/api/users/{user_id}.json?fields=id,firstName,surname,email,phoneNumber,telegram,organisationUnits[id,displayName],attributeValues[value,attribute[name]]"
     response = requests.get(url, auth=HTTPBasicAuth(username, password))
     
@@ -106,70 +123,90 @@ def get_user_details(user_id, dhis_url, username, password):
         print(f"Failed to fetch user {user_id}. Status Code: {response.status_code}")
         return None
 
+
+def get_alert_users(org_id, field):
+    # Use a context manager to handle the session automatically
+    logger.info(f"WE ARE HERE_________________OU:{org_id}###########")
+
+    fefch_field = getattr(User, field)
+
+    with Session() as session:
+        # Query the users table based on the provided org_unit_id
+        try:
+            users = (
+                session.query(User.first_name, fefch_field)
+                .filter(User.org_unit_id == org_id)
+                .filter(fefch_field.isnot(None))
+                .all()
+            )
+
+            return users
+        except Exception as e:
+            logger.error(f"Error Fetching data from DB for {org_id}: {e}", exc_info=True)
+
+    
+
 # 3. Save or update user details in the PostgreSQL database
 def save_user_to_db(user_data):
-    session = Session()
-    try:
-        # Check if user already exists
-        user = session.query(User).filter_by(user_id=user_data["user_id"]).first()
-        
-        if user:
-            # Update existing user
-            for key, value in user_data.items():
-                setattr(user, key, value)
-        else:
-            # Add new user
-            user = User(**user_data)
-            session.add(user)
+    with Session() as session:
+        try:
+            # Check if user already exists
+            user = session.query(User).filter_by(user_id=user_data["user_id"]).first()
+            
+            if user:
+                # Update existing user
+                for key, value in user_data.items():
+                    setattr(user, key, value)
+            else:
+                # Add new user
+                user = User(**user_data)
+                session.add(user)
 
-        session.commit()
-    except Exception as e:
-        print(f"Failed to save user {user_data['user_id']}: {e}")
-        session.rollback()
-    finally:
-        session.close()
+            session.commit()
+        except Exception as e:
+            print(f"Failed to save user {user_data['user_id']}: {e}")
+            session.rollback()
+
 
 # Save or update an alert in the database
 def save_alert_to_db(trackedEntityInstance, disease_name, alert_disease, alert_id, enrollmentDate, org_unit_name, org_unit_id, week):
-    session = Session()
-    alert = session.query(Alert).filter_by(trackedEntityInstance=trackedEntityInstance).first()
+    with Session() as session:
+        alert = session.query(Alert).filter_by(trackedEntityInstance=trackedEntityInstance).first()
 
-    # If alert exists, update it; otherwise, create a new one
-    if alert:
-        alert.disease_name = disease_name
-        alert.alert_disease = alert_disease
-        alert.alert_id = alert_id
-        alert.notificationDate = enrollmentDate
-        alert.org_unit_name = org_unit_name
-        alert.org_unit_id = org_unit_id
-        alert.week = week
-    else:
-        alert = Alert(
-            trackedEntityInstance=trackedEntityInstance,
-            disease_name=disease_name,
-            alert_disease=alert_disease,
-            alert_id=alert_id,
-            notificationDate=enrollmentDate,
-            org_unit_name=org_unit_name,
-            org_unit_id=org_unit_id,
-            week=week,
-            status="VERIFICATION_STATUS_PENDING"
-        )
-        session.add(alert)
-    
-    session.commit()
-    session.close()
+        # If alert exists, update it; otherwise, create a new one
+        if alert:
+            alert.disease_name = disease_name
+            alert.alert_disease = alert_disease
+            alert.alert_id = alert_id
+            alert.notificationDate = enrollmentDate
+            alert.org_unit_name = org_unit_name
+            alert.org_unit_id = org_unit_id
+            alert.week = week
+        else:
+            alert = Alert(
+                trackedEntityInstance=trackedEntityInstance,
+                disease_name=disease_name,
+                alert_disease=alert_disease,
+                alert_id=alert_id,
+                notificationDate=enrollmentDate,
+                org_unit_name=org_unit_name,
+                org_unit_id=org_unit_id,
+                week=week,
+                status="VERIFICATION_STATUS_PENDING"
+            )
+            session.add(alert)        
+        session.commit()
 
 # Check if an alert exists for the given disease, org unit, and week
 def check_alert_in_db(disease_name, org_unit_id, week):
-    session = Session()
-    count = session.query(func.count(Alert.trackedEntityInstance)).filter_by(
-        disease_name=disease_name,
-        org_unit_id=org_unit_id,
-        week=week
-    ).scalar()
-    session.close()
-    return count
+    with Session() as session:
+        count = session.query(func.count(Alert.trackedEntityInstance)).filter_by(
+            disease_name=disease_name,
+            org_unit_id=org_unit_id,
+            week=week
+        ).scalar()
+
+        return count
 
 # DATE EPI WEEK FUNCTION
 def get_recent_epi_weeks(weeks: int):
@@ -459,11 +496,13 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
 
 
 # EMAIL BODY TEMPLATES:
+@shared_task
 def send_email_alert(smtp_server, port, sender_email, password, recipient_emails, subject, body_html):
     # Create the email message
     msg = MIMEMultipart()
     msg['From'] = sender_email
-    msg['To'] = ', '.join(recipient_emails)
+    msg['To'] = recipient_emails
+    # msg['To'] = ', '.join(recipient_emails)
     msg['Subject'] = subject
 
     # Attach the HTML body
@@ -480,25 +519,26 @@ def send_email_alert(smtp_server, port, sender_email, password, recipient_emails
         print(f"Failed to send email to {recipient_emails}. Error: {e}")
         
 # Function to create HTML body from a template
-def create_email_body(district_name, disease_name, value, facility_df_with_names):
+def create_email_body(msg, facility_df_with_names):
     # HTML template
     html_template = f"""
     <html>
     <body>
-        <h3>{value} case(s) of {disease_name} detected in {district_name}</h3>
+        {msg}
         <p>Please find below the list of facilities with reported cases:</p>
-        <table border="1" style="border-collapse: collapse; width: 50%;">
+        <table border="1" style="border-collapse: collapse; width: 80%;">
             <thead>
                 <tr>
                     <th>Facility</th>
-                    <th>Number of Cases</th>
+                    <th> # Cases</th>
                 </tr>
             </thead>
             <tbody>
                 {"".join([f"<tr><td>{row['orgUnit_name']}</td><td>{row['value']}</td></tr>" for index, row in facility_df_with_names.iterrows()])}
             </tbody>
         </table>
-        <p>Please take the necessary actions. For details, loging to <a href='https://eidsr.znphi.co.zm' target='blank'>eIDRS</a></p>
+        <p>Thank you for your attention to this matter.</p>
+
         <p> Best regards, <br /> ZNPHI SDI/SPIM Team.</p>
     </body>
     </html>
@@ -511,11 +551,31 @@ def create_email_body1(msg):
     html_template = f"""
     <html>
     <body>
-        <h4>{msg}</h4>
-        <p>Please take the necessary actions. For details, loging to <a href='https://eidsr.znphi.co.zm' target='blank'>eIDRS</a></p>
+        {msg}
+        <p>Thank you for your attention to this matter.</p>
         <p> Best regards, <br /> ZNPHI SDI/SPIM Team.</p>
     </body>
     </html>
     """
     return html_template
+
+
+@shared_task
+def send_sms(phone, msg):
+    logger.info('************STARTING SMS SENDING**************')
+    data = {
+        "username": f"{sms_user}",
+        "phone_number": f'["{phone}"]',  # JSON-like array as a string
+        "message": f"{msg}",
+        "message_type": "2",
+        "certificate": f"{sms_cert}"
+    }
+
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+
+    response = requests.post(sms_url, data=data, headers=headers)
+    logger.info(response.status_code)
+    logger.info(response.text)
 
