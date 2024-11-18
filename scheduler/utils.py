@@ -282,27 +282,27 @@ def fetch_aggregated_data(api, dx, pe, ou):
             break
         except Exception as e:
             print(f"Error fetching analytics data: {e}")
-            time.sleep(1)
+            time.sleep(10)
             retries += 1
             data = None
 
     if not data:
         return None
+    else:
+        # Convert the response 'rows' to a DataFrame
+        headers = [header['name'] for header in data.get('headers', [])]
+        rows = data.get('rows', [])
+        df = pd.DataFrame(rows, columns=headers)
 
-    # Convert the response 'rows' to a DataFrame
-    headers = [header['name'] for header in data.get('headers', [])]
-    rows = data.get('rows', [])
-    df = pd.DataFrame(rows, columns=headers)
+        # Rename the relevant columns
+        df.rename(columns={'dx': 'dataElement', 'ou': 'orgUnit'}, inplace=True)
 
-    # Rename the relevant columns
-    df.rename(columns={'dx': 'dataElement', 'ou': 'orgUnit'}, inplace=True)
+        # Keep only the first 4 columns: dataElement, pe, orgUnit, value
+        df = df[['dataElement', 'pe', 'orgUnit', 'value']]
 
-    # Keep only the first 4 columns: dataElement, pe, orgUnit, value
-    df = df[['dataElement', 'pe', 'orgUnit', 'value']]
-
-    # df should be a table with columns: dataElement (UID), orgUnit (UID), pe (ISO format), value
-    df.to_csv('./data/aggregate_data.csv', index=False)
-    return df
+        # df should be a table with columns: dataElement (UID), orgUnit (UID), pe (ISO format), value
+        df.to_csv('./data/aggregate_data.csv', index=False)
+        return df
 
 
 # GET ORG UNIT, DATA ELEMENT AND CATEGORY NAMES
@@ -564,18 +564,16 @@ def create_email_body1(msg):
 def send_sms(phone, msg):
     logger.info('************STARTING SMS SENDING**************')
     data = {
-        "username": f"{sms_user}",
-        "phone_number": f'["{phone}"]',  # JSON-like array as a string
-        "message": f"{msg}",
-        "message_type": "2",
-        "certificate": f"{sms_cert}"
+        'username': sms_user,
+        'phone_number': f'[{phone}]',
+        'message': msg,
+        'message_type': "2",
+        'certificate': sms_cert
     }
 
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
+    headers = {}
 
-    response = requests.post(sms_url, data=data, headers=headers)
+    response = requests.request("POST", sms_url, headers=headers, data=data)
     logger.info(response.status_code)
     logger.info(response.text)
 

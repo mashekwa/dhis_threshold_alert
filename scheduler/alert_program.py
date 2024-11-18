@@ -143,7 +143,7 @@ def fetch_data():
     ous = f'{district_level_uid};{parent_ogs}' 
     df_analytics = fetch_aggregated_data(api, dx_list, periods, ou=ous)
 
-    if not df_analytics.empty:
+    if df_analytics is not None:
         df_with_names = replace_uids_with_names(api, df_analytics)
         df_with_names['year'] = df_with_names['pe'].str[:4]  # First 4 characters represent the year
         df_with_names['week'] = df_with_names['pe'].str[5:]  # Characters after 'W' represent the week
@@ -164,7 +164,7 @@ def fetch_data():
         return parquet_file
     
     else:
-        print("No data fetched")
+        logger.info("No data fetched")
         return None
 
 
@@ -190,7 +190,7 @@ def one_suspected_case(df, dx):
     
     if not df_x.empty: 
         #CHECK IF its ANTHRAX AND EPIMIC DISTRICT
-        
+
         # IF NOT CONTINUE WITH THIS FLOW       
         final_df = df_x[df_x['value'] >= 1]
 
@@ -217,7 +217,7 @@ def one_suspected_case(df, dx):
             else:
                 logger.info('ALERT NOT IN DB')
                 #Post to DHIS2
-                tei_id, alert_id = post_to_alert_program(district_uid, district_name, disease_id, period)
+                tei_id, alert_id = post_to_alert_program(district_uid, district_name, disease_id, alert_week)
                 logger.info(f"TEI:.....{tei_id}")
                 # Get Facility level data
                 facility_data_df = fetch_aggregated_data(api, dx, pe, ou)
@@ -235,7 +235,7 @@ def one_suspected_case(df, dx):
                 email_msg = f'<p>Suspected case(s) of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker <b><a href="{tei_link}">here</a></b> as soon as possible.</p>'
                 email_subject = f"{district} eIDSR Alert: {alert_id} - {disease}"
 
-                sms_msg = f'eIDSR Alert | {alert_id}: unusual rise in suspected cases of {disease} from {district} ND2 report.'
+                sms_msg = f'eIDSR Alert | {alert_id}: Suspected case(s) of {disease} from {district} ND2 report.'
 
                 # get_users_and_notify(message_template, district_uid)
                 get_users_and_notify(alert_id, district_uid, email_msg, email_subject, sms_msg, tele_msg, facility_df_with_names)
@@ -256,91 +256,90 @@ def get_double_cases(df, dx):
     for dis in dataElements_list:
         dz = df_x [df_x ['dataElement'] == dis].copy()
     
-        if dz.empty:
-            return pd.DataFrame(), "Empty dataset provided"
+        if not dz.empty:
+            # Convert 'value' column to numeric type
+            dz['value'] = pd.to_numeric(dz['value'], errors='coerce')
 
+            # Pivot the data for easier comparison
+            pivot_data = dz.pivot_table(
+                index=['dataElement', 'orgUnit', 'orgUnit_name', 'dataElement_name'],
+                columns='week',
+                values='value',
+                aggfunc='sum'
+            ).reset_index()
 
-        # Convert 'value' column to numeric type
-        dz['value'] = pd.to_numeric(dz['value'], errors='coerce')
+            # Ensure the weeks are sorted and only two weeks are present
+            weeks = sorted(pivot_data.columns[4:])
+            if len(weeks) < 2:
+                return pd.DataFrame(), "Not enough weeks of data for comparison"
 
-        # Pivot the data for easier comparison
-        pivot_data = dz.pivot_table(
-            index=['dataElement', 'orgUnit', 'orgUnit_name', 'dataElement_name'],
-            columns='week',
-            values='value',
-            aggfunc='sum'
-        ).reset_index()
+            earlier_week, later_week = weeks[0], weeks[-1]
 
-        # Ensure the weeks are sorted and only two weeks are present
-        weeks = sorted(pivot_data.columns[4:])
-        if len(weeks) < 2:
-            return pd.DataFrame(), "Not enough weeks of data for comparison"
+            # Calculate increase and the doubling condition
+            pivot_data['increase'] = pivot_data[later_week] - pivot_data[earlier_week]
+            doubling_condition = pivot_data[later_week] >= 2 * pivot_data[earlier_week]
 
-        earlier_week, later_week = weeks[0], weeks[-1]
+            # Filter rows with doubling cases
+            doubling_cases = pivot_data[doubling_condition].copy()
 
-        # Calculate increase and the doubling condition
-        pivot_data['increase'] = pivot_data[later_week] - pivot_data[earlier_week]
-        doubling_condition = pivot_data[later_week] >= 2 * pivot_data[earlier_week]
+            # Add a 'weeks' column containing the two weeks separated by a comma
+            # if not doubling_cases.empty:
+            #     doubling_cases.loc[:, 'weeks'] = f"{earlier_week}, {later_week}"
 
-        # Filter rows with doubling cases
-        doubling_cases = pivot_data[doubling_condition].copy()
+            doubling_cases = doubling_cases.assign(weeks=f"{earlier_week}, {later_week}")
+            # Select relevant columns to return
+            result = doubling_cases[
+                ['dataElement', 'orgUnit', 'dataElement_name', 'orgUnit_name', 'weeks', 'increase']
+            ]
 
-        # Add a 'weeks' column containing the two weeks separated by a comma
-        doubling_cases.loc[:, 'weeks'] = f"{earlier_week}, {later_week}"
+            alert_week = get_recent_epi_weeks(1) 
+            alert_week = alert_week[0]
+            logger.info(f"WEEK............{alert_week}")
 
-        # Select relevant columns to return
-        result = doubling_cases[
-            ['dataElement', 'orgUnit', 'dataElement_name', 'orgUnit_name', 'weeks', 'increase']
-        ]
+            if not result.empty: 
+                logger.info("STARTING NOTIFIER")
+                for index, row in result.iterrows():
+                    district_name = row['orgUnit_name']
+                    district_uid = row['orgUnit']        
+                    disease_name = row['dataElement_name']
+                    week_1, week_2 = result['weeks'].iloc[0].split(', ')       
+                    increase = row['increase']
+                    disease_id = row['dataElement']
 
-        logger.info("CHECK USERS TO ALERT")
-        email_to_alert, sms_to_alert, telegram_to_alert = get_alert_users(result)
+                    logger.info(f"CHECKING ALERT IN DB")  
+                    check_record = check_alert_in_db(disease_name, district_uid, alert_week)
+                    if check_record >=1:
+                        logger.info('ALERT ALREADY IN DB')        
+                    else:
+                        logger.info('ALERT NOT IN DB')
+                        #Post to DHIS2
+                        tei_id, alert_id = post_to_alert_program(district_uid, district_name, disease_id, alert_week)
+                        logger.info(f"TEI:.....{tei_id}")
 
-        alert_week = get_recent_epi_weeks(1) 
-        alert_week = alert_week[0]
-        logger.info(f"WEEK............{alert_week}")
-
-        if not result.empty: 
-            logger.info("STARTING NOTIFIER")
-            for index, row in result.iterrows():
-                district_name = row['orgUnit_name']
-                district_uid = row['orgUnit']        
-                disease_name = row['dataElement_name']
-                week_1, week_2 = result['weeks'].iloc[0].split(', ')       
-                increase = row['increase']
-                disease_id = row['dataElement']
-
-                logger.info(f"CHECKING ALERT IN DB")  
-                check_record = check_alert_in_db(disease_name, district_uid, alert_week)
-                if check_record >=1:
-                    logger.info('ALERT ALREADY IN DB')        
-                else:
-                    logger.info('ALERT NOT IN DB')
-                    #Post to DHIS2
-                    tei_id, alert_id = post_to_alert_program(district_uid, district_name, disease_id, alert_week)
-                    logger.info(f"TEI:.....{tei_id}")
-
-                    disease = ' '.join(disease_name.rsplit(' ', 1)[:-1])
-                    district = ' '.join(district_name.split(' ')[1:])
-                
-                    tei_link = f"https://dev.eidsr.znphi.co.zm/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
-
-                    # TELEGRAM MESSAGE TEMPLATE               
-                    tele_msg =  f'We have detected an unusual rise in suspected cases of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \n \n {tei_link}'
+                        disease = ' '.join(disease_name.rsplit(' ', 1)[:-1])
+                        district = ' '.join(district_name.split(' ')[1:])
                     
-                    # EMAIL MESSAGE TEMPLATE
-                    email_msg = f'<p>We have detected an unusual rise in suspected cases of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker <b><a href="{tei_link}">here</a></b> as soon as possible.</p>'
-                    email_subject = f"{district} eIDSR Alert: {alert_id} - {disease}"
+                        tei_link = f"https://dev.eidsr.znphi.co.zm/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
 
-                    sms_msg = f'eIDSR Alert | {alert_id}: unusual rise in suspected cases of {disease} from {district} ND2 report.'
+                        # TELEGRAM MESSAGE TEMPLATE               
+                        tele_msg =  f'We have detected an unusual rise in suspected cases of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \n \n {tei_link}'
+                        
+                        # EMAIL MESSAGE TEMPLATE
+                        email_msg = f'<p>We have detected an unusual rise in suspected cases of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker <b><a href="{tei_link}">here</a></b> as soon as possible.</p>'
+                        email_subject = f"{district} eIDSR Alert: {alert_id} - {disease}"
 
-                    # get_users_and_notify(message_template, district_uid)
-                    get_users_and_notify(alert_id, district_uid, email_msg, email_subject, sms_msg, tele_msg)
+                        sms_msg = f'eIDSR Alert | {alert_id}: unusual rise in suspected cases of {disease} from {district} ND2 report.'
 
-            return result, f"Comparison between weeks {earlier_week} and {later_week}"
+                        # get_users_and_notify(message_template, district_uid)
+                        get_users_and_notify(alert_id, district_uid, email_msg, email_subject, sms_msg, tele_msg)
+
+                return result, f"Comparison between weeks {earlier_week} and {later_week}"
+            else:
+                logger.info("No Disease Data to Alert")        
+
         else:
-            logger.info("No Disease Data to Alert")        
-    
+            logger.info("No Disease Data to Alert")
+
     return [], "No data found for the specified diseases."
 
 

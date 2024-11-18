@@ -55,7 +55,7 @@ def run_alerts():
     increase_1_5x_diseases = config('1_5x_increase_diseases').split(',')
     cluster_of_diseases = config('cluster_of_diseases').split(',')
     
-    if parquet_file:
+    if parquet_file is not None:
         df_with_names = pd.read_parquet(f'./data/{parquet_file}')
         if df_with_names is None:
             print("No data fetched.")
@@ -71,6 +71,5 @@ def run_alerts():
             for item in cluster_of_diseases:
                 disease, num = item.split('_')
                 cluster_of_cases(df_with_names, disease, int(num))
-
     else:
-        logger.error("Failed to fetch data; alerts not run.")
+        logger.error("Alert not run at this time.")
