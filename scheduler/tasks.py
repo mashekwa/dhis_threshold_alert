@@ -28,10 +28,9 @@ api = Api(f'{DHIS2_BASE_URL}', DHIS2_USERNAME, DHIS2_PASSWORD)
 
 # Configuration for data elements and organization units
 DATA_ELEMENTS = json.loads(config("DATA_ELEMENTS", "{}"))
-PARENT_ORG_UNITS = json.loads(config("PARENT_ORG_UNITS", "[]"))
 ORG_UNIT_LEVEL = "LEVEL-Dz7Sm3imvLU"
 LAST_N_WEEKS = int(config("LAST_N_WEEKS", 5))
-TELEGRAM_CHAT_ID = config("TELEGRAM_CHAT_ID")
+TELEGRAM_GROUP_ID = config("TELEGRAM_GROUP_ID")
 
 def get_last_n_weeks():
     """Calculate periods for the last N weeks."""
@@ -65,13 +64,13 @@ def run_alerts():
             logger.info(f"DATA COUNT........{len(df_with_names)}")
             # Call alert functions
             one_suspected_case(df_with_names, one_suspected_diseases)
-            # get_double_cases(df_with_names, doubling_cases_diseases)
-            # check_1_5x_increase(df_with_names, increase_1_5x_diseases)
+            get_double_cases(df_with_names, doubling_cases_diseases)
+            check_1_5x_increase(df_with_names, increase_1_5x_diseases)
             
-            #For clusters of diseases
-            # for item in cluster_of_diseases:
-            #     disease, num = item.split('_')
-            #     cluster_of_cases(df_with_names, disease, int(num))
+            # For clusters of diseases
+            for item in cluster_of_diseases:
+                disease, num = item.split('_')
+                cluster_of_cases(df_with_names, disease, int(num))
 
     else:
         logger.error("Failed to fetch data; alerts not run.")

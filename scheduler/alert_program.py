@@ -25,6 +25,8 @@ smtp_password = config("smtp_password")
 TELEGRAM_TOKEN = config("TELEGRAM_TOKEN")
 TELE_GROUP = config("TELEGRAM_GROUP_ID")
 
+
+
 @shared_task
 def send_telegram_message(user_id, message):  
     
@@ -75,8 +77,6 @@ def get_users_and_notify(alert_id, org_unit_id,email_msg, email_subject, sms_msg
                 subject=email_subject,
                 body_html=body_html
             ) 
-            # personalized_message = message_template.format(name=user_name)
-            # send_telegram_message.delay(user_telegram, personalized_message)
 
     
     user_phones = get_alert_users(org_unit_id, 'phone')
@@ -89,9 +89,6 @@ def get_users_and_notify(alert_id, org_unit_id,email_msg, email_subject, sms_msg
             logger.info(f"FAKE SMS: {sms_msg}")
 
             send_sms.delay(user_phone, sms_msg)
-                # personalized_message = message_template.format(name=user_name)
-                # send_telegram_message.delay(user_telegram, personalized_message)
-
     
    
     user_telegrams = get_alert_users(org_unit_id, 'telegram')
@@ -141,8 +138,10 @@ def fetch_data():
 
     dx_list = dx_ids
     periods = pe  # Example of relative periods 
-    district_level_uid = 'LEVEL-Dz7Sm3imvLU'  # UID for the district level  
-    df_analytics = fetch_aggregated_data(api, dx_list, periods, ou=district_level_uid)
+    parent_ogs = config("PARENT_ORG_UNITS")
+    district_level_uid = config("ORG_UNIT_LEVEL")  # UID for the district level 
+    ous = f'{district_level_uid};{parent_ogs}' 
+    df_analytics = fetch_aggregated_data(api, dx_list, periods, ou=ous)
 
     if not df_analytics.empty:
         df_with_names = replace_uids_with_names(api, df_analytics)
@@ -189,7 +188,10 @@ def one_suspected_case(df, dx):
     
     df_x = get_disease_data(df, dataElements_list, number_of_weeks)    
     
-    if not df_x.empty:        
+    if not df_x.empty: 
+        #CHECK IF its ANTHRAX AND EPIMIC DISTRICT
+        
+        # IF NOT CONTINUE WITH THIS FLOW       
         final_df = df_x[df_x['value'] >= 1]
 
         alert_week = get_recent_epi_weeks(1) 
@@ -208,7 +210,7 @@ def one_suspected_case(df, dx):
             pe = [f'{period}']
             ou = f'LEVEL-MQLiogB9XBV;{district_uid}'
 
-            logger.info(f"POSTING TO ALERT PROGRAM")
+            logger.info(f"POSTING TO ALERT PROGRAM...............{alert_week}")
             check_record = check_alert_in_db(disease_name, district_uid, period)
             if check_record >=1:
                 logger.info('ALERT ALREADY IN DB')          
@@ -293,9 +295,6 @@ def get_double_cases(df, dx):
 
         logger.info("CHECK USERS TO ALERT")
         email_to_alert, sms_to_alert, telegram_to_alert = get_alert_users(result)
-        logger.info(f"ALERT EMAILS: {len(email_to_alert)}")
-        logger.info(f"ALERT SMS: {len(sms_to_alert)}")
-        logger.info(f"ALERT TELEGRAM: {len(telegram_to_alert)}")
 
         alert_week = get_recent_epi_weeks(1) 
         alert_week = alert_week[0]
@@ -311,57 +310,32 @@ def get_double_cases(df, dx):
                 increase = row['increase']
                 disease_id = row['dataElement']
 
-                logger.info(f"POSTING TO ALERT PROGRAM...............{alert_week}")
+                logger.info(f"CHECKING ALERT IN DB")  
                 check_record = check_alert_in_db(disease_name, district_uid, alert_week)
                 if check_record >=1:
-                    print(check_record)
-                    print('ALERT ALREADY IN DB')          
+                    logger.info('ALERT ALREADY IN DB')        
                 else:
-                    print('CONTINUE!')
+                    logger.info('ALERT NOT IN DB')
                     #Post to DHIS2
                     tei_id, alert_id = post_to_alert_program(district_uid, district_name, disease_id, alert_week)
                     logger.info(f"TEI:.....{tei_id}")
+
+                    disease = ' '.join(disease_name.rsplit(' ', 1)[:-1])
+                    district = ' '.join(district_name.split(' ')[1:])
                 
                     tei_link = f"https://dev.eidsr.znphi.co.zm/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
-                    tele_msg =f'eIDSR Alert | {alert_id}: \nThere has been doubling of cases in {district_name} for {disease_name} from Week {week_1} to week {week_2}. The cases increased by {increase}. \n \n{tei_link}'
 
-                    # nationa_uid = rootOU
-                    # #if district_uid in emails_to_alert:
-                    # if district_uid in email_to_alert or nationa_uid in email_to_alert:
-                    #     recipient_emails = email_to_alert.get(district_uid, email_to_alert.get(nationa_uid, []))
-                    #     print(recipient_emails)
-
-                    #     #Create the email subject and HTML body
-                    #     subject = f"eIDSR Alert: Doubling of cases in {district_name} for {disease_name}"
-                    #     body_html = create_email_body1(msg)
-
-                    #     # Send the email
-                    #     send_email_alert(
-                    #         smtp_server=smtp_server,
-                    #         port=port,
-                    #         sender_email=sender_email,
-                    #         password=password,
-                    #         recipient_emails=recipient_emails,
-                    #         subject=subject,
-                    #         body_html=body_html
-                    #     )        
+                    # TELEGRAM MESSAGE TEMPLATE               
+                    tele_msg =  f'We have detected an unusual rise in suspected cases of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \n \n {tei_link}'
                     
-                    # else:
-                    #     print("district_uid does not exist in emails_to_alert")
+                    # EMAIL MESSAGE TEMPLATE
+                    email_msg = f'<p>We have detected an unusual rise in suspected cases of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker <b><a href="{tei_link}">here</a></b> as soon as possible.</p>'
+                    email_subject = f"{district} eIDSR Alert: {alert_id} - {disease}"
 
+                    sms_msg = f'eIDSR Alert | {alert_id}: unusual rise in suspected cases of {disease} from {district} ND2 report.'
 
-                    # # SEND TELEGRAM
-                    # if district_uid in telegram_to_alert or nationa_uid in telegram_to_alert:
-                    #     recipient_telegram = telegram_to_alert.get(district_uid, telegram_to_alert .get(nationa_uid, []))
-                    #     print(recipient_telegram)
-
-                    #     for id in recipient_telegram:              
-                    #         # Send Telegram alert
-                    #         send_telegram_message(id, msg)         
-                    
-                    # else:
-                    #     print("district_uid does not exist in emails_to_alert")
-                    send_telegram_message.delay('-1002490743936', tele_msg)
+                    # get_users_and_notify(message_template, district_uid)
+                    get_users_and_notify(alert_id, district_uid, email_msg, email_subject, sms_msg, tele_msg)
 
             return result, f"Comparison between weeks {earlier_week} and {later_week}"
         else:
@@ -416,7 +390,8 @@ def check_1_5x_increase(df, dx):
     alert_week = get_recent_epi_weeks(1) 
     alert_week = alert_week[0]
     logger.info(f"WEEK............{alert_week}")
-    if not result_df.empty: 
+    if not result_df.empty:
+        logger.info("STARTING NOTIFIER")
         for index, row in result_df.iterrows():
             district_name = row['orgUnit_name']          
             disease_name = row['dataElement_name']
@@ -448,12 +423,11 @@ def check_1_5x_increase(df, dx):
                 email_subject = f"{district} eIDSR Alert: {alert_id} - {disease}"
 
                 sms_msg = f'eIDSR Alert | {alert_id}: unusual rise in suspected cases of {disease} from {district} ND2 report.'
-                #NOTIFY USERS VIA TELEGRAM
+                
                 # get_users_and_notify(message_template, district_uid)
                 get_users_and_notify(alert_id, district_uid, email_msg, email_subject, sms_msg, tele_msg)
 
-                # SEND TO ALERT TELEGRAM GROUP
-                # send_telegram_message.delay('-1002490743936', msg)
+
 
     return result_df, f"Comparison between week {comparison_week} and baseline (1.5x average of weeks {', '.join(map(str, baseline_weeks))})"
 
@@ -486,7 +460,7 @@ def cluster_of_cases(df, disease, num):
             pe = [f'{period}']
             ou = f'LEVEL-MQLiogB9XBV;{district_uid}'
 
-            logger.info(f"POSTING TO ALERT PROGRAM...............{alert_week}")
+            logger.info(f"CHECKING ALERT IN DB")  
             check_record = check_alert_in_db(disease_name, district_uid, alert_week)
             if check_record >= 1:
                 logger.info(f'ALERT ALREADY IN DB.....{alert_week} | {district_uid} | {disease_id}')   
@@ -506,6 +480,9 @@ def cluster_of_cases(df, disease, num):
                     # Only work with facilities with >= the number of cluster issue
                     facility_data_df = facility_data_df[facility_data_df['value'] >= num]
 
+                    disease = ' '.join(disease_name.rsplit(' ', 1)[:-1])
+                    district = ' '.join(district_name.split(' ')[1:])
+
                     if not facility_data_df.empty:
                         # Replace UIDs with readable names
                         facility_df_with_names = replace_uids_with_names(api, facility_data_df)
@@ -520,17 +497,18 @@ def cluster_of_cases(df, disease, num):
 
                         # Create link to the alert
                         tei_link = f"https://dev.eidsr.znphi.co.zm/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
+                        
+                        # TELEGRAM MESSAGE TEMPLATE               
+                        tele_msg =  f'We have detected an unusual cluster of suspected cases of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \nFacilities affected: \n{orgz}. \n \n {tei_link}'
+                        
+                        # EMAIL MESSAGE TEMPLATE
+                        email_msg = f'<p>We have detected an unusual cluster of suspected cases of  <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker <b><a href="{tei_link}">here</a></b> as soon as possible.</p>'
+                        email_subject = f"{district} eIDSR Alert: {alert_id} - {disease}"
 
-                        # Prepare the alert message
-                        msg = (
-                            f"eIDSR Alert | {alert_id}: \nDetected clusters of {disease_name} cases "
-                            f"in {district_name}->({value1}) for Week {week}.\n"
-                            f"Facilities affected: \n{orgz}. \n \n {tei_link}"
-                        )
+                        sms_msg = f'eIDSR Alert | {alert_id}: unusual cluster in suspected cases of {disease} from {district} ND2 report.'
 
-                        # Send the alert via Telegram
-                        send_telegram_message.delay('-1002490743936', msg)
-                        logger.info(f"Alert sent for district: {district_name} for disease: {disease_name}")
+                        # get_users_and_notify(message_template, district_uid)
+                        get_users_and_notify(alert_id, district_uid, email_msg, email_subject, sms_msg, tele_msg, facility_df_with_names)
                     else:
                         logger.info(f'No Clusters of {num} detected at the facility level.')
     else:
