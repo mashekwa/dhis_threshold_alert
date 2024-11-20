@@ -59,7 +59,7 @@ services:
     build: ./backend
     container_name: backend
     environment:
-      DATABASE_URL: "postgresql://postgres:postgres@pgdb:5432/alert_app"
+      DATABASE_URL: ${db}
     ports:
       - "8000:8000"
     env_file:
