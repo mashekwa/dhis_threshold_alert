@@ -233,7 +233,7 @@ def one_suspected_case(df, dx):
                 
                 # EMAIL MESSAGE TEMPLATE
                 email_msg = f'<p>Suspected case(s) of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker <b><a href="{tei_link}">here</a></b> as soon as possible.</p>'
-                email_subject = f"{district} eIDSR Alert: {alert_id} - {disease}"
+                email_subject = f"eIDSR {alert_id}: {district}- {disease}"
 
                 sms_msg = f'eIDSR Alert | {alert_id}: Suspected case(s) of {disease} from {district} ND2 report.'
 
@@ -326,7 +326,7 @@ def get_double_cases(df, dx):
                         
                         # EMAIL MESSAGE TEMPLATE
                         email_msg = f'<p>We have detected an unusual rise in suspected cases of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker <b><a href="{tei_link}">here</a></b> as soon as possible.</p>'
-                        email_subject = f"{district} eIDSR Alert: {alert_id} - {disease}"
+                        email_subject = f"eIDSR {alert_id}: {district}- {disease}"
 
                         sms_msg = f'eIDSR Alert | {alert_id}: unusual rise in suspected cases of {disease} from {district} ND2 report.'
 
@@ -419,7 +419,7 @@ def check_1_5x_increase(df, dx):
                 
                 # EMAIL MESSAGE TEMPLATE
                 email_msg = f'<p>We have detected an unusual rise in suspected cases of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker <b><a href="{tei_link}">here</a></b> as soon as possible.</p>'
-                email_subject = f"{district} eIDSR Alert: {alert_id} - {disease}"
+                email_subject = f"eIDSR {alert_id}: {district}- {disease}"
 
                 sms_msg = f'eIDSR Alert | {alert_id}: unusual rise in suspected cases of {disease} from {district} ND2 report.'
                 
@@ -502,7 +502,7 @@ def cluster_of_cases(df, disease, num):
                         
                         # EMAIL MESSAGE TEMPLATE
                         email_msg = f'<p>We have detected an unusual cluster of suspected cases of  <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker <b><a href="{tei_link}">here</a></b> as soon as possible.</p>'
-                        email_subject = f"{district} eIDSR Alert: {alert_id} - {disease}"
+                        email_subject = f"eIDSR {alert_id}: {district}- {disease}"
 
                         sms_msg = f'eIDSR Alert | {alert_id}: unusual cluster in suspected cases of {disease} from {district} ND2 report.'
 

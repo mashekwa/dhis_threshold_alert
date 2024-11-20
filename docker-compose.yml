@@ -1,18 +1,10 @@
 services:
   scheduler:
-    build: .
+    build: ./worker
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - PYTHONUNBUFFERED=1
-      - DHIS2_BASE_URL=${DHIS2_BASE_URL}
-      - DHIS2_USERNAME=${DHIS2_USERNAME}
-      - DHIS2_PASSWORD=${DHIS2_PASSWORD}
-      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
-      - TELEGRAM_GROUP_ID=${TELEGRAM_GROUP_ID}
-      - DATA_ELEMENTS=${DATA_ELEMENTS}
-      - PARENT_ORG_UNITS=${PARENT_ORG_UNITS}
-      - LAST_N_WEEKS=${LAST_N_WEEKS}
       - TZ=Africa/Harare
     depends_on:
       redis:
@@ -59,6 +51,21 @@ services:
       PGADMIN_DEFAULT_PASSWORD: admin
     volumes:
       - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      pgdb:
+        condition: service_healthy
+
+  backend:
+    build: ./backend
+    container_name: backend
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@pgdb:5432/alert_app"
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
     depends_on:
       pgdb:
         condition: service_healthy
