@@ -41,7 +41,7 @@
   
   const fetchProvinces = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/province-summary');
+      const response = await fetch('http://localhost:8001/api/province-summary');
       provinces.value = await response.json();
     } catch (error) {
       console.error('Error fetching province data:', error);

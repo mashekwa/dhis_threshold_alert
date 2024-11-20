@@ -1,7 +1,7 @@
 from datetime import datetime
 import pandas as pd
 from datetime import date, timedelta
-from decouple import config
+from . import configs
 import time
 from requests.auth import HTTPBasicAuth
 import sqlite3
@@ -20,24 +20,10 @@ from celery import shared_task
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# PROD eIDSR CREDENTIALS
-prod_user = config('DHIS2_USERNAME')
-prod_password = config('DHIS2_PASSWORD')
-prod_url = config('DHIS2_BASE_URL')
-rootOUS = config('PARENT_ORG_UNITS') # Root Org Unit UID (COUNTRY)
-dataSet = config('DATASET') # UID of IDSR dataSet
 
-# SMS CONFIGS
-sms_url= config('sms_url')
-sms_user= config('sms_user')
-sms_cert= config('sms_cert')
-
-
-# Load the PostgreSQL connection string from the .env file
-db_url = config('db')
 
 # Initialize SQLAlchemy
-engine = create_engine(db_url)
+engine = create_engine(configs.DB_URL)
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 
@@ -349,12 +335,11 @@ def replace_uids_with_names(api, df):
 
 
 def generate_alert_id(): 
-    DHIS2_BASE_URL = config("DHIS2_BASE_URL")
-    DHIS2_USERNAME = config("DHIS2_USERNAME")
-    DHIS2_PASSWORD = config("DHIS2_PASSWORD")      
+    DHIS2_USERNAME = configs.PROD_DHIS_USER
+    DHIS2_PASSWORD = configs.PROD_DHIS_PASSWORD
     # 1. Generate Alert ID
     alert_response = requests.get(
-            f"https://dev.eidsr.znphi.co.zm/api/trackedEntityAttributes/rfg6oQYBIKk/generate.json",
+            f"{configs.DEV_DHIS_URL}/api/trackedEntityAttributes/rfg6oQYBIKk/generate.json",
             auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD)
         )
     alert_id = alert_response.json()["value"]
@@ -362,10 +347,9 @@ def generate_alert_id():
     return alert_id
 
 def get_dhis2Id():
-    DHIS2_BASE_URL = config("DHIS2_BASE_URL")
-    DHIS2_USERNAME = config("DHIS2_USERNAME")
-    DHIS2_PASSWORD = config("DHIS2_PASSWORD")  
-    url = f'https://dev.eidsr.znphi.co.zm/api/system/id'
+    DHIS2_USERNAME = configs.PROD_DHIS_USER
+    DHIS2_PASSWORD = configs.PROD_DHIS_PASSWORD
+    url = f'{configs.DEV_DHIS_URL}/api/system/id'
     headers = {
     'Content-type': 'application/json',
     'Accept': 'application/json'
@@ -395,9 +379,8 @@ def get_dhis2Id():
 
 
 def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
-    DHIS2_BASE_URL = config("DHIS2_BASE_URL")
-    DHIS2_USERNAME = config("DHIS2_USERNAME")
-    DHIS2_PASSWORD = config("DHIS2_PASSWORD")
+    DHIS2_USERNAME = configs.PROD_DHIS_USER
+    DHIS2_PASSWORD = configs.PROD_DHIS_PASSWORD
 
     file_path = './data/alert_conditions.csv'
     df = pd.read_csv(file_path)
@@ -453,7 +436,7 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
 
     try:
         response = requests.post(
-            f"https://dev.eidsr.znphi.co.zm/api/trackedEntityInstances",
+            f"{configs.DEV_DHIS_URL}/api/trackedEntityInstances",
             auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD),
             headers={
                 'Content-type': 'application/json',
@@ -474,7 +457,7 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
             }
             try:
                 requests.post(
-                    f"https://dev.eidsr.znphi.co.zm/api/enrollments",
+                    f"{configs.DEV_DHIS_URL}/api/enrollments",
                     auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD),
                     headers={
                         'Content-type': 'application/json',
@@ -497,7 +480,7 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
 
 # EMAIL BODY TEMPLATES:
 @shared_task
-def send_email_alert(smtp_server, port, sender_email, password, recipient_emails, subject, body_html):
+def send_email_alert(SMTP_SERVER, port, sender_email, password, recipient_emails, subject, body_html):
     # Create the email message
     msg = MIMEMultipart()
     msg['From'] = sender_email
@@ -510,7 +493,7 @@ def send_email_alert(smtp_server, port, sender_email, password, recipient_emails
 
     try:
         # Connect to the SMTP server and send the email
-        with smtplib.SMTP_SSL(smtp_server, port) as server:
+        with smtplib.SMTP_SSL(SMTP_SERVER, port) as server:
             server.login(sender_email, password)
             server.sendmail(sender_email, recipient_emails, msg.as_string())
         print(f"Email sent successfully to {recipient_emails}")
@@ -564,16 +547,16 @@ def create_email_body1(msg):
 def send_sms(phone, msg):
     logger.info('************STARTING SMS SENDING**************')
     data = {
-        'username': sms_user,
+        'username': configs.SMS_USER,
         'phone_number': f'[{phone}]',
         'message': msg,
         'message_type': "2",
-        'certificate': sms_cert
+        'certificate': configs.SMS_CERT
     }
 
     headers = {}
 
-    response = requests.request("POST", sms_url, headers=headers, data=data)
+    response = requests.request("POST", configs.SMS_URL, headers=headers, data=data)
     logger.info(response.status_code)
     logger.info(response.text)
 

@@ -1,4 +1,3 @@
-from decouple import config
 from datetime import datetime
 import pandas as pd
 from dhis2 import Api
@@ -6,31 +5,22 @@ import logging
 import requests
 from .utils import send_sms, get_users_in_group, get_user_details, save_user_to_db, send_email_alert,create_email_body, create_email_body1, post_to_alert_program, get_recent_epi_weeks, check_alert_in_db, get_alert_users, fetch_aggregated_data, replace_uids_with_names
 from celery import shared_task
+from . import configs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize DHIS2 API
-DHIS2_BASE_URL = config("DHIS2_BASE_URL")
-DHIS2_USERNAME = config("DHIS2_USERNAME")
-DHIS2_PASSWORD = config("DHIS2_PASSWORD")
-api = Api(f"{DHIS2_BASE_URL}", DHIS2_USERNAME, DHIS2_PASSWORD)
-
-# SMTP SERVER SETTINGS
-smtp_server = config("smtp_server")
-smtp_port = config("smtp_port")
-smtp_sender_email = config("smtp_email") 
-smtp_password = config("smtp_password")
-
-TELEGRAM_TOKEN = config("TELEGRAM_TOKEN")
-TELE_GROUP = config("TELEGRAM_GROUP_ID")
-
-
+DHIS2_BASE_URL = configs.PROD_DHIS_URL
+DHIS2_USERNAME = configs.PROD_DHIS_USER
+DHIS2_PASSWORD = configs.PROD_DHIS_PASSWORD
+user_group_id = configs.DHIS_USERGROUP
+api = Api(f'{DHIS2_BASE_URL}', DHIS2_USERNAME, DHIS2_PASSWORD)
 
 @shared_task
 def send_telegram_message(user_id, message):  
     
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    url = f"https://api.telegram.org/bot{configs.TELEGRAM_TOKEN}/sendMessage"
     payload = {
         'chat_id': user_id,
         'text': message
@@ -59,7 +49,7 @@ def get_users_and_notify(alert_id, org_unit_id,email_msg, email_subject, sms_msg
             user_name = user[0]  # First value in the tuple is the user's name
             user_email = user[1]
                 
-            logger.info(f"FAKE SENDING TELE MSG TO NAME: {user_name} EMAIL: {user_email}")            
+            logger.info(f"SENDING ALERT EMAIL TO NAME: {user_name} EMAIL: {user_email}")            
             final_email_msg = email_final.format(name=user_name)
 
             if fac_data is not None:
@@ -69,10 +59,10 @@ def get_users_and_notify(alert_id, org_unit_id,email_msg, email_subject, sms_msg
 
             # Send the email
             send_email_alert.delay(
-                smtp_server=smtp_server,
-                port=smtp_port,
-                sender_email=smtp_sender_email,
-                password=smtp_password,
+                SMTP_SERVER=configs.SMTP_SERVER,
+                port=configs.SMTP_PORT,
+                sender_email=configs.SMTP_SENDER_EMAIL,
+                password=configs.SMTP_PASSWORD,
                 recipient_emails=user_email,
                 subject=email_subject,
                 body_html=body_html
@@ -103,7 +93,7 @@ def get_users_and_notify(alert_id, org_unit_id,email_msg, email_subject, sms_msg
             send_telegram_message.delay(telegram, personalized_message)
 
     general_tele_msg = tele_head + f'\n{tele_msg}'
-    send_telegram_message.delay(TELE_GROUP, general_tele_msg)
+    send_telegram_message.delay(configs.TELE_GROUP, general_tele_msg)
   
 
 
@@ -120,7 +110,7 @@ def fetch_users_and_save_details(dhis_url, username, password, user_group_id):
 
 def fetch_data():
     logger.info("STARTING DHIS2 DATA PULL.....")
-    weeks = int(config('LAST_N_WEEKS'))
+    weeks = int(configs.DATA_PULL_WEEKS)
 
     # DISEASE LIST FROM CSV
     file_path = './data/alert_conditions.csv'
@@ -138,8 +128,8 @@ def fetch_data():
 
     dx_list = dx_ids
     periods = pe  # Example of relative periods 
-    parent_ogs = config("PARENT_ORG_UNITS")
-    district_level_uid = config("ORG_UNIT_LEVEL")  # UID for the district level 
+    parent_ogs = configs.ROOT_ORGS
+    district_level_uid = configs.ORG_UNIT_LEVEL  # UID for the district level 
     ous = f'{district_level_uid};{parent_ogs}' 
     df_analytics = fetch_aggregated_data(api, dx_list, periods, ou=ous)
 
@@ -226,13 +216,13 @@ def one_suspected_case(df, dx):
                 disease = ' '.join(disease_name.rsplit(' ', 1)[:-1])
                 district = ' '.join(district_name.split(' ')[1:])
 
-                tei_link = f"https://dev.eidsr.znphi.co.zm/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
+                tei_link = f"{configs.DEV_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
                 
                 # TELEGRAM MESSAGE TEMPLATE               
                 tele_msg =  f'Suspected case(s) of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \n \n {tei_link}'
                 
                 # EMAIL MESSAGE TEMPLATE
-                email_msg = f'<p>Suspected case(s) of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker <b><a href="{tei_link}">here</a></b> as soon as possible.</p>'
+                email_msg = f'<p>Suspected case(s) of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the  <b><a href="{tei_link}">eIDSR alert notification tracker</a></b> as soon as possible.</p>'
                 email_subject = f"eIDSR {alert_id}: {district}- {disease}"
 
                 sms_msg = f'eIDSR Alert | {alert_id}: Suspected case(s) of {disease} from {district} ND2 report.'
@@ -319,16 +309,16 @@ def get_double_cases(df, dx):
                         disease = ' '.join(disease_name.rsplit(' ', 1)[:-1])
                         district = ' '.join(district_name.split(' ')[1:])
                     
-                        tei_link = f"https://dev.eidsr.znphi.co.zm/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
+                        tei_link = f"{configs.DEV_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
 
                         # TELEGRAM MESSAGE TEMPLATE               
                         tele_msg =  f'We have detected an unusual rise in suspected cases of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \n \n {tei_link}'
                         
                         # EMAIL MESSAGE TEMPLATE
-                        email_msg = f'<p>We have detected an unusual rise in suspected cases of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker <b><a href="{tei_link}">here</a></b> as soon as possible.</p>'
+                        email_msg = f'<p>We have detected an unusual rise in suspected cases of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the <b><a href="{tei_link}">eIDSR alert notification tracker</a></b> as soon as possible.</p>'
                         email_subject = f"eIDSR {alert_id}: {district}- {disease}"
 
-                        sms_msg = f'eIDSR Alert | {alert_id}: unusual rise in suspected cases of {disease} from {district} ND2 report.'
+                        sms_msg = f'eIDSR Alert | {alert_id}: Unusual rise in suspected cases of {disease} from {district} ND2 report.'
 
                         # get_users_and_notify(message_template, district_uid)
                         get_users_and_notify(alert_id, district_uid, email_msg, email_subject, sms_msg, tele_msg)
@@ -412,16 +402,16 @@ def check_1_5x_increase(df, dx):
                 disease = ' '.join(disease_name.rsplit(' ', 1)[:-1])
                 district = ' '.join(district_name.split(' ')[1:])
 
-                tei_link = f"https://dev.eidsr.znphi.co.zm/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
+                tei_link = f"{configs.DEV_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
                 
                 # TELEGRAM MESSAGE TEMPLATE               
                 tele_msg =  f'We have detected an unusual rise in suspected cases of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \n \n {tei_link}'
                 
                 # EMAIL MESSAGE TEMPLATE
-                email_msg = f'<p>We have detected an unusual rise in suspected cases of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker <b><a href="{tei_link}">here</a></b> as soon as possible.</p>'
+                email_msg = f'<p>We have detected an unusual rise in suspected cases of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the <b><a href="{tei_link}">eIDSR alert notification tracker</a></b> as soon as possible.</p>'
                 email_subject = f"eIDSR {alert_id}: {district}- {disease}"
 
-                sms_msg = f'eIDSR Alert | {alert_id}: unusual rise in suspected cases of {disease} from {district} ND2 report.'
+                sms_msg = f'eIDSR Alert | {alert_id}: Unusual rise in suspected cases of {disease} from {district} ND2 report.'
                 
                 # get_users_and_notify(message_template, district_uid)
                 get_users_and_notify(alert_id, district_uid, email_msg, email_subject, sms_msg, tele_msg)
@@ -495,16 +485,16 @@ def cluster_of_cases(df, disease, num):
                         orgz = org_units_str
 
                         # Create link to the alert
-                        tei_link = f"https://dev.eidsr.znphi.co.zm/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
+                        tei_link = f"{configs.DEV_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
                         
                         # TELEGRAM MESSAGE TEMPLATE               
                         tele_msg =  f'We have detected an unusual cluster of suspected cases of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \nFacilities affected: \n{orgz}. \n \n {tei_link}'
                         
                         # EMAIL MESSAGE TEMPLATE
-                        email_msg = f'<p>We have detected an unusual cluster of suspected cases of  <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker <b><a href="{tei_link}">here</a></b> as soon as possible.</p>'
+                        email_msg = f'<p>We have detected an unusual cluster of suspected cases of  <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the  <b><a href="{tei_link}">eIDSR alert notification tracker</a></b> as soon as possible.</p>'
                         email_subject = f"eIDSR {alert_id}: {district}- {disease}"
 
-                        sms_msg = f'eIDSR Alert | {alert_id}: unusual cluster in suspected cases of {disease} from {district} ND2 report.'
+                        sms_msg = f'eIDSR Alert | {alert_id}: Unusual cluster in suspected cases of {disease} from {district} ND2 report.'
 
                         # get_users_and_notify(message_template, district_uid)
                         get_users_and_notify(alert_id, district_uid, email_msg, email_subject, sms_msg, tele_msg, facility_df_with_names)
