@@ -115,7 +115,7 @@ def fetch_users_and_save_details(dhis_url, username, password, user_group_id):
 
 def fetch_data():
     logger.info("STARTING DHIS2 DATA PULL.....")
-    logger.infor(api)
+    logger.info(api)
     logger.info(DHIS2_BASE_URL)
     logger.info(DHIS2_PASSWORD)
     logger.info(DHIS2_USERNAME)
