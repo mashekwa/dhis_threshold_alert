@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 task_logger = get_task_logger(__name__)
 
 # Monkey-patch requests to disable SSL verification globally
-requests.packages.urllib3.disable_warnings()
-requests.Session.verify = False
+# requests.packages.urllib3.disable_warnings()
+# requests.Session.verify = False
 
 # Initialize DHIS2 API
 DHIS2_BASE_URL = configs.PROD_DHIS_URL
@@ -27,6 +27,7 @@ DHIS2_USERNAME = configs.PROD_DHIS_USER
 DHIS2_PASSWORD = configs.PROD_DHIS_PASSWORD
 user_group_id = configs.DHIS_USERGROUP
 api = Api(f'{DHIS2_BASE_URL}', DHIS2_USERNAME, DHIS2_PASSWORD)
+api.session.verify = False
 
 # Configuration for data elements and organization units
 DATA_ELEMENTS = json.loads(configs.DATA_ELEMENTS)
