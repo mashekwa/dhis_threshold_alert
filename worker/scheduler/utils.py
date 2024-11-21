@@ -410,6 +410,7 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
         "trackedEntityInstance": tei_id,
         "trackedEntityType":"QH1LBzGrk5g",
         "orgUnit":org_unit_id,
+        "program": "xDsAFnQMmeU",
         "attributes":[
             {"attribute": "YDUOTtNQm99", "value": enrollmentDate},
             {"attribute":"CJkJraokrXn","value":"PHEOC_WATCH"},
