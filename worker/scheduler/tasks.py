@@ -2,13 +2,13 @@ import os
 import json
 import logging
 import pandas as pd
+import requests
 from dhis2 import Api
 from datetime import datetime, timedelta
 from celery.utils.log import get_task_logger
 from scheduler import celery_app
 import smtplib
 from celery import shared_task
-import requests
 from .alert_program import fetch_users_and_save_details, cluster_of_cases, one_suspected_case,check_1_5x_increase,get_double_cases
 from . import configs
 
@@ -16,6 +16,10 @@ from . import configs
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 task_logger = get_task_logger(__name__)
+
+# Monkey-patch requests to disable SSL verification globally
+requests.packages.urllib3.disable_warnings()
+requests.Session.verify = False
 
 # Initialize DHIS2 API
 DHIS2_BASE_URL = configs.PROD_DHIS_URL

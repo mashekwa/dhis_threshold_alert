@@ -1,14 +1,18 @@
 from datetime import datetime
 import pandas as pd
+import requests
 from dhis2 import Api
 import logging
-import requests
 from .utils import send_sms, get_users_in_group, get_user_details, save_user_to_db, send_email_alert,create_email_body, create_email_body1, post_to_alert_program, get_recent_epi_weeks, check_alert_in_db, get_alert_users, fetch_aggregated_data, replace_uids_with_names
 from celery import shared_task
 from . import configs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Monkey-patch requests to disable SSL verification globally
+requests.packages.urllib3.disable_warnings()
+requests.Session.verify = False
 
 # Initialize DHIS2 API
 DHIS2_BASE_URL = configs.PROD_DHIS_URL
