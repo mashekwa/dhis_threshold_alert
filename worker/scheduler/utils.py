@@ -394,12 +394,16 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
     alert_disease = row['nmc_diagnosis'].values[0] if not row.empty else None
     disease_name = row['name'].values[0] if not row.empty else None
     
+    logger.info(f"FETCHING ALERT ID......")
     alert_id = generate_alert_id()
+    logger.info(f"DONE.......ALERT ID:{alert_id}")
+    logger.info("FETCHING TEI ID......")
     tei_id = get_dhis2Id()
+    logger.info(f"DONE:....TEI:{tei_id}")
     
     # Get today's date
     today = datetime.today()
-    # Format the date to 'YYYY-MM-DD'
+    # Format the date to 'YYYY-MM-DD' DHIS2 DATE FORMAT
     enrollmentDate = today.strftime('%Y-%m-%d')
 
     dat = {
@@ -415,7 +419,7 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
             ]
         }
     
-    
+    logger.info(f"DHIS2 DATA TO POST......:\n{dat}")
     payload = {
             "trackedEntityInstance": tei_id,
             "trackedEntityType": "QH1LBzGrk5g",  # Replace with your tracked entity type ID
