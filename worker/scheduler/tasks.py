@@ -26,7 +26,7 @@ DHIS2_BASE_URL = configs.PROD_DHIS_URL
 DHIS2_USERNAME = configs.PROD_DHIS_USER
 DHIS2_PASSWORD = configs.PROD_DHIS_PASSWORD
 user_group_id = configs.DHIS_USERGROUP
-api = Api(f'{DHIS2_BASE_URL}', DHIS2_USERNAME, DHIS2_PASSWORD, verify_ssl=False)
+api = Api(f'{DHIS2_BASE_URL}', DHIS2_USERNAME, DHIS2_PASSWORD)
 
 # Configuration for data elements and organization units
 DATA_ELEMENTS = json.loads(configs.DATA_ELEMENTS)
