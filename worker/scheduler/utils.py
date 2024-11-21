@@ -75,7 +75,7 @@ Base.metadata.create_all(engine)
 # 1. Fetch users in the group
 def get_users_in_group(dhis_url, username, password, user_group_id):
     url = f"{dhis_url}/api/userGroups/{user_group_id}.json?fields=users[id,displayName]"
-    response = requests.get(url, auth=HTTPBasicAuth(username, password))
+    response = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
     
     if response.status_code == 200:
         return response.json().get('users', [])
@@ -87,7 +87,7 @@ def get_users_in_group(dhis_url, username, password, user_group_id):
 def get_user_details(user_id, dhis_url, username, password):
     #print(f"Fetching details for user: {user_id}")
     url = f"{dhis_url}/api/users/{user_id}.json?fields=id,firstName,surname,email,phoneNumber,telegram,organisationUnits[id,displayName],attributeValues[value,attribute[name]]"
-    response = requests.get(url, auth=HTTPBasicAuth(username, password))
+    response = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
     
     if response.status_code == 200:
         data = response.json()
@@ -344,7 +344,7 @@ def generate_alert_id():
     # 1. Generate Alert ID
     alert_response = requests.get(
             f"{configs.DEV_DHIS_URL}/api/trackedEntityAttributes/rfg6oQYBIKk/generate.json",
-            auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD)
+            auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD), verify=False
         )
     alert_id = alert_response.json()["value"]
     
@@ -363,7 +363,7 @@ def get_dhis2Id():
         response = requests.get(
             url,
             auth=(DHIS2_USERNAME, DHIS2_PASSWORD),
-            headers=headers
+            headers=headers, verify=False
             )
 
         if response.status_code == 200:            
@@ -446,7 +446,7 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
                 'Content-type': 'application/json',
                 'Accept': 'application/json'
             },
-            data=json.dumps(dat)
+            data=json.dumps(dat), verify=False
         )
 
         if response.status_code == 200:
@@ -467,7 +467,7 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
                         'Content-type': 'application/json',
                         'Accept': 'application/json'
                     },
-                    data=json.dumps(data_enroll)
+                    data=json.dumps(data_enroll), verify=False
                 ) 
             except requests.exceptions.RequestException as error:
                 print(error)            

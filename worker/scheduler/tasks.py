@@ -34,6 +34,7 @@ DATA_ELEMENTS = json.loads(configs.DATA_ELEMENTS)
 ORG_UNIT_LEVEL = configs.ORG_UNIT_LEVEL
 LAST_N_WEEKS = configs.DATA_PULL_WEEKS
 TELEGRAM_GROUP_ID = configs.DATA_ELEMENTS
+user_group_id=configs.DHIS_USERGROUP
 
 def get_last_n_weeks():
     """Calculate periods for the last N weeks."""
