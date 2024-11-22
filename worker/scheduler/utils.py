@@ -339,6 +339,7 @@ def replace_uids_with_names(api, df):
 
 
 def generate_alert_id(): 
+    logger.info(f'LOGGING____GENERATE ID: {configs.DEV_DHIS_URL}')
     DHIS2_USERNAME = configs.PROD_DHIS_USER
     DHIS2_PASSWORD = configs.PROD_DHIS_PASSWORD
     # 1. Generate Alert ID
@@ -353,6 +354,7 @@ def generate_alert_id():
 def get_dhis2Id():
     DHIS2_USERNAME = configs.PROD_DHIS_USER
     DHIS2_PASSWORD = configs.PROD_DHIS_PASSWORD
+    logger.info(f'LOGGING____DHIS2 ID: {configs.DEV_DHIS_URL}')
     url = f'{configs.DEV_DHIS_URL}/api/system/id'
     headers = {
     'Content-type': 'application/json',
@@ -385,6 +387,8 @@ def get_dhis2Id():
 def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
     DHIS2_USERNAME = configs.PROD_DHIS_USER
     DHIS2_PASSWORD = configs.PROD_DHIS_PASSWORD
+    DHIS2_URL = configs.DEV_DHIS_URL
+    logger.info(f'LOGGING____POST 2 DHIS: {DHIS2_URL}')
 
     file_path = './data/alert_conditions.csv'
     df = pd.read_csv(file_path)
@@ -448,8 +452,9 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
     #f"{configs.DEV_DHIS_URL}/api/trackedEntityInstances",
 
     try:
+        logger.info(f'LOGGING____POST 2 DHIS: {DHIS2_URL}')
         response = requests.post(
-            f"{configs.DEV_DHIS_URL}/api/trackedEntityInstances/",
+            f"{DHIS2_URL}/api/trackedEntityInstances/",
             auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD),
             headers={
                 'Content-type': 'application/json',
@@ -469,8 +474,9 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
                 "incidentDate":enrollmentDate
             }
             try:
+                logger.info(f'LOGGING____POST 2 DHIS: {DHIS2_URL}')
                 requests.post(
-                    f"{configs.DEV_DHIS_URL}/api/enrollments",
+                    f"{DHIS2_URL}/api/enrollments",
                     auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD),
                     headers={
                         'Content-type': 'application/json',
