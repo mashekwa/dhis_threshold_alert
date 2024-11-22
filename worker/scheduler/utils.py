@@ -406,8 +406,8 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
     # Format the date to 'YYYY-MM-DD' DHIS2 DATE FORMAT
     enrollmentDate = today.strftime('%Y-%m-%d')
 
-    dat = {
-        "trackedEntityInstance": tei_id,
+    data = {
+        "trackedEntity": tei_id,
         "trackedEntityType":"QH1LBzGrk5g",
         "orgUnit":org_unit_id,
         "program": "xDsAFnQMmeU",
@@ -420,9 +420,9 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
             ]
         }
     
-    logger.info(f"DHIS2 DATA TO POST......:\n{dat}")
+    logger.info(f"DHIS2 DATA TO POST......:\n{data}")
     payload = {
-            "trackedEntityInstance": tei_id,
+            "trackedEntity": tei_id,
             "trackedEntityType":"QH1LBzGrk5g",
             "orgUnit":org_unit_id,
             "program": "xDsAFnQMmeU",
@@ -435,7 +435,7 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
             ],
             "enrollments":[
                 {
-                    "trackedEntityInstance":tei_id,
+                    "trackedEntity":tei_id,
                     "program":"xDsAFnQMmeU",
                     "status":"ACTIVE",
                     "orgUnit":org_unit_id,
@@ -449,37 +449,37 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
 
     try:
         response = requests.post(
-            f"{configs.DEV_DHIS_URL}/api/tracker",
+            f"{configs.DEV_DHIS_URL}/api/trackedEntityInstances/",
             auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD),
             headers={
                 'Content-type': 'application/json',
                 'Accept': 'application/json'
             },
-            data=json.dumps(payload), verify=False
+            data=json.dumps(data), verify=False
         )
 
         if response.status_code == 200:
             print(f'STATUS: Posted to DHIS2 Alert Program successfully.\n {response.text}')
-            # data_enroll = {
-            #     "trackedEntityInstance":tei_id,
-            #     "program":"xDsAFnQMmeU",
-            #     "status":"ACTIVE",
-            #     "orgUnit":org_unit_id,
-            #     "enrollmentDate":enrollmentDate,
-            #     "incidentDate":enrollmentDate
-            # }
-            # try:
-            #     requests.post(
-            #         f"{configs.DEV_DHIS_URL}/api/enrollments",
-            #         auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD),
-            #         headers={
-            #             'Content-type': 'application/json',
-            #             'Accept': 'application/json'
-            #         },
-            #         data=json.dumps(data_enroll), verify=False
-            #     ) 
-            # except requests.exceptions.RequestException as error:
-            #     print(error)        
+            data_enroll = {
+                "trackedEntity":tei_id,
+                "program":"xDsAFnQMmeU",
+                "status":"ACTIVE",
+                "orgUnit":org_unit_id,
+                "enrollmentDate":enrollmentDate,
+                "incidentDate":enrollmentDate
+            }
+            try:
+                requests.post(
+                    f"{configs.DEV_DHIS_URL}/api/enrollments",
+                    auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD),
+                    headers={
+                        'Content-type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    data=json.dumps(data_enroll), verify=False
+                ) 
+            except requests.exceptions.RequestException as error:
+                print(error)        
             save_alert_to_db(tei_id, disease_name, alert_disease, alert_id, enrollmentDate, org_unit_name, org_unit_id, week)
             return tei_id, alert_id
         else:
