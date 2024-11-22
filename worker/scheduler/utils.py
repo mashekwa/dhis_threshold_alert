@@ -454,7 +454,7 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
     try:
         logger.info(f'LOGGING____POST 2 DHIS: {DHIS2_URL}')
         response = requests.post(
-            f"{DHIS2_URL}/api/trackedEntityInstances/",
+            f"{DHIS2_URL}/api/trackedEntityInstances",
             auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD),
             headers={
                 'Content-type': 'application/json',
