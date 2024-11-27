@@ -47,21 +47,27 @@ This project is designed to monitor and analyze aggregate data from DHIS2 and pr
 ---
 
 ## Getting Started
+This guide assumes you already have docker and docker-compose installed on your machine.
 
 1. **Clone the repository**:  
-   ```bash
+   ```
    git clone <repository-url>
-   ```bash
+   ```
 
 2. **Set up environment variables**:
-    ```bash
+    ```
     cp example.env .env
-    ```bash
+    ```
+    Update the different variables defined in the .env file. Before proceeding with step 4. ensure the port mapping in the docker-compose.yml file works for your enviroment, this involves making sure the ports are available.
 
 3. **Build the Docker image**:
-    ```bash
-    cp example.env .env
-    ```bash
-
+    ```
+    docker-compose build
+    ```
+4. **Start up the containers**:
+    ```
+    docker-compose up or docker-compose up -d
+    ```
+    
 
 
