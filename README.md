@@ -68,6 +68,17 @@ This guide assumes you already have docker and docker-compose installed on your 
     ```
     docker-compose up or docker-compose up -d
     ```
+
+
+
+## STILL TO COMPLETE
+- Mini backend (FastAPI).
+- Mini frontend (Vuejs).
+
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
     
 
 
