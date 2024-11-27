@@ -70,7 +70,7 @@ This guide assumes you already have docker and docker-compose installed on your 
     ```
 
 
-
+---
 ## STILL TO COMPLETE
 - Mini backend (FastAPI).
 - Mini frontend (Vuejs).
