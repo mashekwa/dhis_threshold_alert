@@ -1,4 +1,13 @@
 <template>
+  <div class="flex">
+    <MapView
+      class="w-full md:w-1/3 mr-4"
+      :geoData="districtGeoJsonData"
+      :highlightFeatureId="selectedDistrictId"
+      :alertInfo="districtAlertData"
+      autoZoom
+    />
+    <div class="w-full md:w-2/3">
     <div>
       <div class="flex items-center gap-4 mb-6">
         <button
@@ -37,30 +46,42 @@
       </div>
     </div>
     </div>
+  </div>
+</div>
   </template>
   
   <script setup>
-  import { ref, onMounted, watch } from 'vue';
-  import { useRoute } from 'vue-router';
-  
-  const route = useRoute();
-  const districts = ref([]);
-  
-  const fetchDistricts = async (province) => {
-    try {
-      const response = await fetch(`http://localhost:8001/api/province/${province}/districts`);
-      districts.value = await response.json();
-    } catch (error) {
-      console.error('Error fetching district data:', error);
-    }
-  };
-  
-  onMounted(() => fetchDistricts(route.params.province));
-  
-  watch(() => route.params.province, (newProvince) => {
-    fetchDistricts(newProvince);
-  });
-  </script>
+import { ref, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import { fetchDistricts } from '@/services/api';
+import geoJsonData from '@/assets/data/gisData.geojson'; // Import GeoJSON data
+import MapView from '@/components/MapView.vue';
+
+const route = useRoute();
+const districts = ref([]);
+const districtAlertData = ref([]);
+const selectedDistrictId = ref(null);
+
+const fetchDistrictData = async () => {
+  try {
+    districts.value = await fetchDistricts(route.params.province);
+    districtAlertData.value = districts.value.map(district => ({
+      name: district.district_name,
+      alerts: district.newAlerts,
+      id: district.id,
+    }));
+  } catch (error) {
+    console.error('Error fetching district data:', error);
+  }
+};
+
+onMounted(fetchDistrictData);
+
+watch(() => route.params.province, (newProvince) => {
+  getDistricts(newProvince);
+});
+</script>
+
   
   <style scoped>
   .border-l {

@@ -1,4 +1,12 @@
 <template>
+  <div class="flex">
+    <MapView
+      class="w-full md:w-1/3 mr-4"
+      :geoData="geoJsonData"
+      :alertInfo="provinceAlertData"
+      autoZoom
+    />
+    <div class="w-full md:w-2/3">
     <div>
       <h2 class="text-2xl font-semibold mb-4">Provincial Summary</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -30,19 +38,29 @@
       </div>
       </div>
     </div>
+  </div>
+</div>
   </template>
   
   <script setup>
   import { ref, onMounted } from 'vue';
   import { useRouter } from 'vue-router';
+  import { fetchProvinces } from '@/services/api';
+  import geoJsonData from '@/assets/data/gisData.geojson'; // Import GeoJSON data
+  import MapView from '@/components/MapView.vue';
   
   const router = useRouter();
   const provinces = ref([]);
+  const provinceAlertData = ref([]); // To store alert information for each province
   
-  const fetchProvinces = async () => {
+  const fetchProvinceData = async () => {
     try {
-      const response = await fetch('http://localhost:8001/api/province-summary');
-      provinces.value = await response.json();
+      provinces.value = await fetchProvinces();
+      provinceAlertData.value = provinces.value.map(province => ({
+        name: province.name,
+        alerts: province.newAlerts,
+        id: province.id,
+      }));
     } catch (error) {
       console.error('Error fetching province data:', error);
     }
@@ -52,5 +70,5 @@
     router.push({ name: 'districts', params: { province: provinceName } });
   };
   
-  onMounted(fetchProvinces);
+  onMounted(fetchProvinceData);
   </script>
