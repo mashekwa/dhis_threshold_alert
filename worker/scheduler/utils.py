@@ -339,22 +339,25 @@ def replace_uids_with_names(api, df):
 
 
 def generate_alert_id(): 
-    logger.info(f'LOGGING____GENERATE ID: {configs.DEV_DHIS_URL}')
+    logger.info(f'REQUESTING TEI ID FROM: {configs.DEV_DHIS_URL}')
     DHIS2_USERNAME = configs.PROD_DHIS_USER
     DHIS2_PASSWORD = configs.PROD_DHIS_PASSWORD
-    # 1. Generate Alert ID
-    alert_response = requests.get(
-            f"{configs.DEV_DHIS_URL}/api/trackedEntityAttributes/rfg6oQYBIKk/generate.json",
-            auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD), verify=False
-        )
-    alert_id = alert_response.json()["value"]
-    
-    return alert_id
+    try:
+        # 1. Generate Alert ID
+        alert_response = requests.get(
+                f"{configs.DEV_DHIS_URL}/api/trackedEntityAttributes/rfg6oQYBIKk/generate.json",
+                auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD), verify=False
+            )
+        alert_id = alert_response.json()["value"]
+        logger.info(f"ALERT ID FETCHED {alert_id}....")
+        return alert_id
+    except requests.exceptions.RequestException as error:
+        logger.error(error)
 
 def get_dhis2Id():
     DHIS2_USERNAME = configs.PROD_DHIS_USER
     DHIS2_PASSWORD = configs.PROD_DHIS_PASSWORD
-    logger.info(f'LOGGING____DHIS2 ID: {configs.DEV_DHIS_URL}')
+    logger.info(f'FETCHING TEI ID fron DHIS2')
     url = f'{configs.DEV_DHIS_URL}/api/system/id'
     headers = {
     'Content-type': 'application/json',
@@ -371,16 +374,14 @@ def get_dhis2Id():
         if response.status_code == 200:            
             json = response.json()
 #             print(json)
-            dhis2_id = json['codes'][0]            
-            print(f'UUID: {dhis2_id}')
+            dhis2_id = json['codes'][0]
+            logger.info(f"TEI UID FETCHED {dhis2_id}....")
+            return dhis2_id
         else:
-            print(f'Could not retrive DHIS2 IDs, {response.status_code}:{response.text}')
-            
+            logger.error(f'Could not retrive DHIS2 IDs, {response.status_code}:{response.text}')            
 
     except requests.exceptions.RequestException as error:
-        print(error)
-
-    return dhis2_id
+        logger.error(error)    
 
 
 
@@ -398,103 +399,84 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
     alert_disease = row['nmc_diagnosis'].values[0] if not row.empty else None
     disease_name = row['name'].values[0] if not row.empty else None
     
-    logger.info(f"FETCHING ALERT ID......")
+    logger.info(f"#####------------\n")
     alert_id = generate_alert_id()
     logger.info(f"DONE.......ALERT ID:{alert_id}")
-    logger.info("FETCHING TEI ID......")
-    tei_id = get_dhis2Id()
-    logger.info(f"DONE:....TEI:{tei_id}")
-    
-    # Get today's date
-    today = datetime.today()
-    # Format the date to 'YYYY-MM-DD' DHIS2 DATE FORMAT
-    enrollmentDate = today.strftime('%Y-%m-%d')
+    logger.info("######------------\n")
+    tei_id = get_dhis2Id()     
+    if tei_id: 
+        logger.info(f"DONE:....TEI:{tei_id}")
+        logger.info(f"DONE:....TEI:{tei_id}")    
+        # Get today's date
+        today = datetime.today()
+        # Format the date to 'YYYY-MM-DD' DHIS2 DATE FORMAT
+        enrollmentDate = today.strftime('%Y-%m-%d')
 
-    data = {
-        "trackedEntity": tei_id,
-        "trackedEntityType":"QH1LBzGrk5g",
-        "orgUnit":org_unit_id,
-        "program": "xDsAFnQMmeU",
-        "attributes":[
-            {"attribute": "YDUOTtNQm99", "value": enrollmentDate},
-            {"attribute":"CJkJraokrXn","value":"PHEOC_WATCH"},
-            {"attribute":"d1AUyuOOo62","value":"VERIFICATION_STATUS_PENDING"},
-            {"attribute":"iSIhKjnlMkv","value":alert_disease},
-            {"attribute":"rfg6oQYBIKk","value":alert_id}
-            ]
-        }
-    
-    logger.info(f"DHIS2 DATA TO POST......:\n{data}")
-    payload = {
-            "trackedEntity": tei_id,
+        data = {
+            "trackedEntityInstance": tei_id,
             "trackedEntityType":"QH1LBzGrk5g",
             "orgUnit":org_unit_id,
             "program": "xDsAFnQMmeU",
-            "attributes": [
+            "attributes":[
                 {"attribute": "YDUOTtNQm99", "value": enrollmentDate},
                 {"attribute":"CJkJraokrXn","value":"PHEOC_WATCH"},
                 {"attribute":"d1AUyuOOo62","value":"VERIFICATION_STATUS_PENDING"},
-                {"attribute":"iSIhKjnlMkv","value":alert_disease},
+                {"attribute":"kAI5cvh9Tmd","value":alert_disease},
                 {"attribute":"rfg6oQYBIKk","value":alert_id}
-            ],
-            "enrollments":[
-                {
-                    "trackedEntity":tei_id,
+                ]
+            }
+        
+        logger.info(f"TEI POST DATA......:\n{data}")
+        
+        #f"{configs.DEV_DHIS_URL}/api/trackedEntityInstances",
+
+        try:
+            logger.info(f'LOGGING____POST 2 DHIS: {DHIS2_URL}')
+            response = requests.post(
+                f"{DHIS2_URL}/api/trackedEntityInstances",
+                auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD),
+                headers={
+                    'Content-type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                data=json.dumps(data), verify=False
+            )
+
+            if response.status_code == 200:
+                logger.info(f'STATUS: Posted to DHIS2 Alert Program successfully.\n {response.text}')
+                logger.info(f'STARTING ENROLMENT FOR {tei_id}......')
+                data_enroll = {
+                    "trackedEntityInstance":tei_id,
                     "program":"xDsAFnQMmeU",
                     "status":"ACTIVE",
                     "orgUnit":org_unit_id,
                     "enrollmentDate":enrollmentDate,
                     "incidentDate":enrollmentDate
                 }
-            ]
-        }
-    
-    #f"{configs.DEV_DHIS_URL}/api/trackedEntityInstances",
+                try:
+                    logger.info(f"ENROLMENT POST DATA......:\n{data_enroll}")
+                    logger.info(f'LOGGING____POST 2 DHIS: {DHIS2_URL}')
+                    res = requests.post(
+                        f"{DHIS2_URL}/api/enrollments",
+                        auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD),
+                        headers={
+                            'Content-type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        data=json.dumps(data_enroll), verify=False
+                    )
+                    if res.status_code == 201:
+                        save_alert_to_db(tei_id, disease_name, alert_disease, alert_id, enrollmentDate, org_unit_name, org_unit_id, week)
 
-    try:
-        logger.info(f'LOGGING____POST 2 DHIS: {DHIS2_URL}')
-        response = requests.post(
-            f"{DHIS2_URL}/api/trackedEntityInstances",
-            auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD),
-            headers={
-                'Content-type': 'application/json',
-                'Accept': 'application/json'
-            },
-            data=json.dumps(data), verify=False
-        )
+                except requests.exceptions.RequestException as error:
+                    print(error)        
+                
+                return tei_id, alert_id
+            else:
+                print(f'Could not CREATE TE in DHIS2: \n {response.text}')
 
-        if response.status_code == 200:
-            print(f'STATUS: Posted to DHIS2 Alert Program successfully.\n {response.text}')
-            data_enroll = {
-                "trackedEntity":tei_id,
-                "program":"xDsAFnQMmeU",
-                "status":"ACTIVE",
-                "orgUnit":org_unit_id,
-                "enrollmentDate":enrollmentDate,
-                "incidentDate":enrollmentDate
-            }
-            try:
-                logger.info(f'LOGGING____POST 2 DHIS: {DHIS2_URL}')
-                requests.post(
-                    f"{DHIS2_URL}/api/enrollments",
-                    auth=HTTPBasicAuth(DHIS2_USERNAME, DHIS2_PASSWORD),
-                    headers={
-                        'Content-type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    data=json.dumps(data_enroll), verify=False
-                ) 
-            except requests.exceptions.RequestException as error:
-                print(error)        
-            save_alert_to_db(tei_id, disease_name, alert_disease, alert_id, enrollmentDate, org_unit_name, org_unit_id, week)
-            return tei_id, alert_id
-        else:
-            print(f'Could not CREATE TE in DHIS2: \n {response.text}')
-
-    except requests.exceptions.RequestException as error:
-        print(error)
-
-    
+        except requests.exceptions.RequestException as error:
+            print(error)
 
 
 # EMAIL BODY TEMPLATES:

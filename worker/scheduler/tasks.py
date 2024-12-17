@@ -54,6 +54,9 @@ def run_alerts():
     # Fetch data
     parquet_file = fetch_data()
 
+    # anthrax_endemic = configs.anthrax_endemic.split(',')
+    # print(anthrax_endemic)
+
     one_suspected_diseases = configs.one_suspected_diseases.split(',')
     doubling_cases_diseases = configs.doubling_cases_diseases.split(',')
     increase_1_5x_diseases = configs.increase_1_5x_diseases.split(',')

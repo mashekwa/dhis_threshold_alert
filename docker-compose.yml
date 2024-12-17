@@ -8,6 +8,8 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - PYTHONUNBUFFERED=1
       - TZ=Africa/Harare
+    volumes:
+      - data:/data:rw
     depends_on:
       redis:
         condition: service_healthy
@@ -77,5 +79,6 @@ services:
 volumes:
   pgadmin-data:
   pgdata:
+  data:
 
   

@@ -117,8 +117,8 @@ def fetch_data():
     logger.info("STARTING DHIS2 DATA PULL.....")
     logger.info(api)
     logger.info(DHIS2_BASE_URL)
-    logger.info(DHIS2_PASSWORD)
-    logger.info(DHIS2_USERNAME)
+    # logger.info(DHIS2_PASSWORD)
+    # logger.info(DHIS2_USERNAME)
     weeks = int(configs.DATA_PULL_WEEKS)
 
     # DISEASE LIST FROM CSV
@@ -181,63 +181,91 @@ def get_disease_data(df, dataElements, weeks):
 
 
 def one_suspected_case(df, dx):    
-    # dataElements_list = ['lI3EMAbSqPD','zBFmdwpO2LZ']  # LIST DE ids for diseases that needs 1 case for notification
     dataElements_list = dx
-    number_of_weeks = get_recent_epi_weeks(1) # 1, means just need to newest week. 1 WEEK    
+    number_of_weeks = get_recent_epi_weeks(1) # 1, means just need to newest week. 1 WEEK
+
+    anthrax_id = "zBFmdwpO2LZ"
     
-    df_x = get_disease_data(df, dataElements_list, number_of_weeks)    
+    df_x = get_disease_data(df, dataElements_list, get_recent_epi_weeks(1)) # All cases, where 
+    df_y = get_disease_data(df, [anthrax_id], get_recent_epi_weeks(2))
+
+    if not df_y.empty:
+         #TESTING ONLY
+        today_str = datetime.now().strftime('%Y%m%d')
+        sample_file = f"data_{anthrax_id}_{today_str}.csv"
+        df_y.to_csv(f'./data/{sample_file}', index=False)
+
+        #CHECK IF its ANTHRAX AND EPIMIC DISTRICT 
+        # # REVIST BEFORE EXPANSION COUNTRYWIDE
+        anthrax_endemic_districts = configs.anthrax_endemic_districts.split(',')
+        
+        # Filter DataFrame to create anthrax_endemic_df
+        anthrax_endemic_df = df_y[(df_y["dataElement"] == anthrax_id) & (df_y["orgUnit"].isin(anthrax_endemic_districts))]
+
+        if not anthrax_endemic_df.empty:
+            anthrax_list = [anthrax_id]
+            get_double_cases(anthrax_endemic_df, anthrax_list)
+
     
-    if not df_x.empty: 
-        #CHECK IF its ANTHRAX AND EPIMIC DISTRICT
+    if not df_x.empty:  
 
-        # IF NOT CONTINUE WITH THIS FLOW       
-        final_df = df_x[df_x['value'] >= 1]
+        # Create final_df containing everything not in anthrax_endemic_df
+        final_df = df_x[~df_x.index.isin(anthrax_endemic_df.index)]
+           
 
-        alert_week = get_recent_epi_weeks(1) 
-        alert_week = alert_week[0]
-        logger.info(f"WEEK............{alert_week}")
-        # Alert people in district
-        for index, row in final_df.iterrows():
-            district_uid = row['orgUnit']
-            district_name = row['orgUnit_name']          
-            disease_name = row['dataElement_name']
-            disease_id = row['dataElement']
-            period = row['pe']        
-            value = row['value']
+        if not final_df.empty:
+            today_str = datetime.now().strftime('%Y%m%d')
+            sample_file = f"data_one_case_{today_str}.csv"
+            final_df.to_csv(f'./data/{sample_file}', index=False)
 
-            dx = [f'{disease_id}']
-            pe = [f'{period}']
-            ou = f'LEVEL-MQLiogB9XBV;{district_uid}'
+            # IF NOT CONTINUE WITH THIS FLOW       
+            final_df = df_x[df_x['value'] >= 1]
 
-            logger.info(f"POSTING TO ALERT PROGRAM...............{alert_week}")
-            check_record = check_alert_in_db(disease_name, district_uid, period)
-            if check_record >=1:
-                logger.info('ALERT ALREADY IN DB')          
-            else:
-                logger.info('ALERT NOT IN DB')
-                #Post to DHIS2
-                tei_id, alert_id = post_to_alert_program(district_uid, district_name, disease_id, alert_week)
-                logger.info(f"TEI:.....{tei_id}")
-                # Get Facility level data
-                facility_data_df = fetch_aggregated_data(api, dx, pe, ou)
-                facility_df_with_names = replace_uids_with_names(api, facility_data_df)               
+            alert_week = get_recent_epi_weeks(1) 
+            alert_week = alert_week[0]
+            logger.info(f"WEEK............{alert_week}")
+            # Alert people in district
+            for index, row in final_df.iterrows():
+                district_uid = row['orgUnit']
+                district_name = row['orgUnit_name']          
+                disease_name = row['dataElement_name']
+                disease_id = row['dataElement']
+                period = row['pe']        
+                value = row['value']
 
-                disease = ' '.join(disease_name.rsplit(' ', 1)[:-1])
-                district = ' '.join(district_name.split(' ')[1:])
+                dx = [f'{disease_id}']
+                pe = [f'{period}']
+                ou = f'LEVEL-MQLiogB9XBV;{district_uid}'
 
-                tei_link = f"{configs.DEV_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
-                
-                # TELEGRAM MESSAGE TEMPLATE               
-                tele_msg =  f'Suspected case(s) of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \n \n {tei_link}'
-                
-                # EMAIL MESSAGE TEMPLATE
-                email_msg = f'<p>Suspected case(s) of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the  <b><a href="{tei_link}">eIDSR alert notification tracker</a></b> as soon as possible.</p>'
-                email_subject = f"eIDSR {alert_id}: {district}- {disease}"
+                logger.info(f"POSTING TO ALERT PROGRAM...............{alert_week}")
+                check_record = check_alert_in_db(disease_name, district_uid, period)
+                if check_record >=1:
+                    logger.info('ALERT ALREADY IN DB')          
+                else:
+                    logger.info('ALERT NOT IN DB')
+                    #Post to DHIS2
+                    tei_id, alert_id = post_to_alert_program(district_uid, district_name, disease_id, alert_week)
+                    logger.info(f"TEI:.....{tei_id}")
+                    # Get Facility level data
+                    facility_data_df = fetch_aggregated_data(api, dx, pe, ou)
+                    facility_df_with_names = replace_uids_with_names(api, facility_data_df)               
 
-                sms_msg = f'eIDSR Alert | {alert_id}: Suspected case(s) of {disease} from {district} ND2 report.'
+                    disease = ' '.join(disease_name.rsplit(' ', 1)[:-1])
+                    district = ' '.join(district_name.split(' ')[1:])
 
-                # get_users_and_notify(message_template, district_uid)
-                get_users_and_notify(alert_id, district_uid, email_msg, email_subject, sms_msg, tele_msg, facility_df_with_names)
+                    tei_link = f"{configs.DEV_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
+                    
+                    # TELEGRAM MESSAGE TEMPLATE               
+                    tele_msg =  f'Suspected case(s) of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \n \n {tei_link}'
+                    
+                    # EMAIL MESSAGE TEMPLATE
+                    email_msg = f'<p>Suspected case(s) of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the  <b><a href="{tei_link}">eIDSR alert notification tracker</a></b> as soon as possible.</p>'
+                    email_subject = f"eIDSR {alert_id}: {district}- {disease}"
+
+                    sms_msg = f'eIDSR Alert | {alert_id}: Suspected case(s) of {disease} from {district} ND2 report.'
+
+                    # get_users_and_notify(message_template, district_uid)
+                    get_users_and_notify(alert_id, district_uid, email_msg, email_subject, sms_msg, tele_msg, facility_df_with_names)
                 
     else:
         print(f"No Data for {dataElements_list} in Week:{number_of_weeks[0]}")
@@ -246,11 +274,12 @@ def one_suspected_case(df, dx):
 
 # DOUBLING OF CASES.
 def get_double_cases(df, dx):
-    dataElements_list = dx
+    dataElements_list = dx    
     number_of_weeks = get_recent_epi_weeks(2)  # 1 means just need the newest week. 1 WEEK
+    logger.info(f"\nDATA ELEMENTS FOR DOUBLE CASES......{dataElements_list}\n{number_of_weeks}")
 
     df_x = get_disease_data(df, dataElements_list, number_of_weeks)
-    logger.info(f"DF DATA......{len(df_x)}")
+    logger.info(f"DF DATA......{len(df_x )}")
     
     for dis in dataElements_list:
         dz = df_x [df_x ['dataElement'] == dis].copy()

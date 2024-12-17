@@ -35,5 +35,7 @@ doubling_cases_diseases = config('doubling_cases_diseases')
 increase_1_5x_diseases = config('increase_1_5x_diseases')
 cluster_of_diseases = config('cluster_of_diseases')
 
+# ENDEMIC DISTRICTS, REVIST BEFORE EXPANDING TO ALL DISTRCITS
+anthrax_endemic_districts = config('anthrax_endemic')
 
 

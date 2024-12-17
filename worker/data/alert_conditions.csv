@@ -1,11 +1,11 @@
 id,name,nmc_diagnosis
-fndkeftTxcT,AFP (Poliomyelitis) death,DA850_AFP
+gpBshPHOB9X,AFP (Poliomyelitis) suspected,DA850_AFP
 zBFmdwpO2LZ,Anthrax suspected,DA034_ANTHRAX
 mH1mYNOZGtT,COVID-19 suspected ,DU071_COVID19
-eDgoVyohFOK,Diarrhoea Non-Bloody suspected,NMC_DIAGNOSIS_UNKNOWN
+eDgoVyohFOK,Diarrhoea Non-Bloody suspected,DA090_DIARR_NON_BLOOD
 AW99TH1knkR,Diarrhoea with blood suspected,DA069_DIARR_BLOOD
-qlNHXdnrMfr,Food Poisoning suspected,NMC_DIAGNOSIS_UNKNOWN
+qlNHXdnrMfr,Food Poisoning suspected,DA050_FOOD_POISONING
 DJZWhsgbmYU,Measles suspected,DB050_MEASLES
-mTNmGGchPoI,Trypanosomiasis suspected,NMC_DIAGNOSIS_UNKNOWN
-lI3EMAbSqPD,"VHF (Ebola, Marburg, Lassa Fever, RVF, Crimean-Congo) suspected",NMC_DIAGNOSIS_UNKNOWN
+mTNmGGchPoI,Trypanosomiasis suspected,DB560_TRYPANOSOMIASIS
+lI3EMAbSqPD,"VHF (Ebola, Marburg, Lassa Fever, RVF, Crimean-Congo) suspected",DA985_VHF
 VVobNuYHkoi,Yellow fever suspected,DA950_YFEVER
