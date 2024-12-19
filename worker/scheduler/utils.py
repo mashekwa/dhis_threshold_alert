@@ -509,7 +509,7 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
 def send_email_alert(SMTP_SERVER, port, sender_email, password, recipient_emails, subject, body_html):
     # Create the email message
     msg = MIMEMultipart()
-    msg['From'] = sender_email
+    msg['From'] = 'ZNPHI eIDSR ALAERT'
     msg['To'] = recipient_emails
     # msg['To'] = ', '.join(recipient_emails)
     msg['Subject'] = subject
