@@ -31,10 +31,10 @@ app.config['beat_schedule'] = {
         'task': 'run_alerts',
         'schedule': timedelta(minutes=2)
     },
-    # 'get-users': {
-    #     'task': 'get_users',
-    #     'schedule': timedelta(minutes=1)
-    # },
+    'get-users': {
+        'task': 'get_users',
+        'schedule': timedelta(minutes=1)
+    },
 
 }
 

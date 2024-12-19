@@ -7,7 +7,7 @@ from requests.auth import HTTPBasicAuth
 import sqlite3
 import requests
 from decouple import config
-from sqlalchemy import create_engine, Column, String, Date, Integer, func
+from sqlalchemy import create_engine, Column, String, Date, Integer, func, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import json
@@ -16,6 +16,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import logging
 from celery import shared_task
+from sqlalchemy.engine import reflection
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,7 +24,6 @@ logger = logging.getLogger(__name__)
 # Monkey-patch requests to disable SSL verification globally
 requests.packages.urllib3.disable_warnings()
 requests.Session.verify = False
-
 
 
 # Initialize SQLAlchemy
@@ -65,8 +65,33 @@ class Location(Base):
     district = Column(String)
     district_id = Column(String, primary_key=True)
 
+
+inspector = inspect(engine)
+def create_tables():
+    try:
+        # Check if the 'users' table exists in the database
+        if 'users' not in inspector.get_table_names():
+            logger.info("Creating 'users' table...")
+            Base.metadata.create_all(engine)
+        else:
+            logger.info("'users' table already exists. Skipping creation.")
+    
+    except Exception as e:
+        logger.error(f"Error while checking/creating tables: {e}")
+
+# Call the function to ensure tables are created only if needed
+create_tables()
+
+# def create_tables_if_not_exists():
+#     # Create a connection to the engine to inspect the database
+#     inspector = reflection.Inspector.from_engine(engine)
+#     if not inspector.has_table('users_tbl'):
+#         Base.metadata.create_all(engine) 
+
+# create_tables_if_not_exists()
+
 # Create the table if it doesn't exist
-Base.metadata.create_all(engine)
+# Base.metadata.create_all(engine)
 
 # # Create the alerts table if it doesn't exist
 # def create_alert_tbl():
