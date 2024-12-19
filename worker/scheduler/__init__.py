@@ -26,27 +26,27 @@ app.config['CELERY_BACKEND'] = "redis://redis:6379/0"
 app.config['CELERY_BROKER_URL'] = "redis://redis:6379/0"
 app.config['broker_connection_retry_on_startup'] = True
 
-app.config['beat_schedule'] = {
-    'get-dhis-data-every-5-minutes': {
-        'task': 'run_alerts',
-        'schedule': timedelta(minutes=2)
-    },
-    'get-users': {
-        'task': 'get_users',
-        'schedule': timedelta(minutes=1)
-    },
-
-}
 # app.config['beat_schedule'] = {
-#     'run-alerts-thursday-17-to-22': {
+#     'get-dhis-data-every-5-minutes': {
 #         'task': 'run_alerts',
-#         'schedule': crontab(minute=0, hour='17-22', day_of_week='thu'),
+#         'schedule': timedelta(minutes=2)
 #     },
-#     'get-users-thursday-1650': {
+#     'get-users': {
 #         'task': 'get_users',
-#         'schedule': crontab(minute=50, hour=16, day_of_week='thu'),
+#         'schedule': timedelta(minutes=1)
 #     },
+
 # }
+app.config['beat_schedule'] = {
+    'run-alerts-thursday-17-to-22': {
+        'task': 'run_alerts',
+        'schedule': crontab(minute=0, hour='17-22', day_of_week='thu'),
+    },
+    'get-users-thursday-1650': {
+        'task': 'get_users',
+        'schedule': crontab(minute=50, hour=16, day_of_week='thu'),
+    },
+}
 
 app.config['timezone'] = 'Africa/Harare'
 
