@@ -253,7 +253,7 @@ def one_suspected_case(df, dx):
                     disease = ' '.join(disease_name.rsplit(' ', 1)[:-1])
                     district = ' '.join(district_name.split(' ')[1:])
 
-                    tei_link = f"{configs.DEV_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
+                    tei_link = f"{configs.ALERT_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
                     
                     # TELEGRAM MESSAGE TEMPLATE               
                     tele_msg =  f'Suspected case(s) of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \n \n {tei_link}'
@@ -347,7 +347,7 @@ def get_double_cases(df, dx):
                         disease = ' '.join(disease_name.rsplit(' ', 1)[:-1])
                         district = ' '.join(district_name.split(' ')[1:])
                     
-                        tei_link = f"{configs.DEV_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
+                        tei_link = f"{configs.ALERT_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
 
                         # TELEGRAM MESSAGE TEMPLATE               
                         tele_msg =  f'We have detected an unusual rise in suspected cases of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \n \n {tei_link}'
@@ -440,7 +440,7 @@ def check_1_5x_increase(df, dx):
                 disease = ' '.join(disease_name.rsplit(' ', 1)[:-1])
                 district = ' '.join(district_name.split(' ')[1:])
 
-                tei_link = f"{configs.DEV_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
+                tei_link = f"{configs.ALERT_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
                 
                 # TELEGRAM MESSAGE TEMPLATE               
                 tele_msg =  f'We have detected an unusual rise in suspected cases of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \n \n {tei_link}'
@@ -523,7 +523,7 @@ def cluster_of_cases(df, disease, num):
                         orgz = org_units_str
 
                         # Create link to the alert
-                        tei_link = f"{configs.DEV_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
+                        tei_link = f"{configs.ALERT_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
                         
                         # TELEGRAM MESSAGE TEMPLATE               
                         tele_msg =  f'We have detected an unusual cluster of suspected cases of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \nFacilities affected: \n{orgz}. \n \n {tei_link}'
