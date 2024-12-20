@@ -582,7 +582,25 @@ def send_sms(phone, msg):
 
     headers = {}
 
-    response = requests.request("POST", configs.SMS_URL, headers=headers, data=data)
-    logger.info(response.status_code)
-    logger.info(response.text)
+    try:
+        response = requests.request("POST", configs.SMS_URL, headers=headers, data=data, verify=False)
+        logger.info(response.status_code)
+        logger.info(response.text)
+    except requests.exceptions.RequestException as e:
+        logger.error(f"An error occurred: {e}")
+# def send_sms(phone, msg):
+#     logger.info('************STARTING SMS SENDING**************')
+#     data = {
+#         'username': configs.SMS_USER,
+#         'phone_number': f'[{phone}]',
+#         'message': msg,
+#         'message_type': "2",
+#         'certificate': configs.SMS_CERT
+#     }
+
+#     headers = {}
+
+#     response = requests.request("POST", configs.SMS_URL, headers=headers, data=data)
+#     logger.info(response.status_code)
+#     logger.info(response.text)
 
