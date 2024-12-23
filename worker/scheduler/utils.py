@@ -583,7 +583,7 @@ def send_sms(phone, msg):
     headers = {}
 
     try:
-        response = requests.request("POST", configs.SMS_URL, headers=headers, data=data, verify=False)
+        response = requests.request("POST", configs.SMS_URL, headers=headers, data=data)
         logger.info(response.status_code)
         logger.info(response.text)
         logger.info(response)
