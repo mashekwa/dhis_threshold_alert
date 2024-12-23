@@ -509,7 +509,7 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
 def send_email_alert(SMTP_SERVER, port, sender_email, password, recipient_emails, subject, body_html):
     # Create the email message
     msg = MIMEMultipart()
-    msg['From'] = 'ZNPHI eIDSR ALAERT'
+    msg['From'] = 'ZNPHI eIDSR ALERT'
     msg['To'] = recipient_emails
     # msg['To'] = ', '.join(recipient_emails)
     msg['Subject'] = subject
@@ -586,8 +586,10 @@ def send_sms(phone, msg):
         response = requests.request("POST", configs.SMS_URL, headers=headers, data=data, verify=False)
         logger.info(response.status_code)
         logger.info(response.text)
+        logger.info(response)
     except requests.exceptions.RequestException as e:
         logger.error(f"An error occurred: {e}")
+
 # def send_sms(phone, msg):
 #     logger.info('************STARTING SMS SENDING**************')
 #     data = {
