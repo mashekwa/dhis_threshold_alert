@@ -44,11 +44,11 @@ app.config['broker_connection_retry_on_startup'] = True
 app.config['beat_schedule'] = {
     'run-alerts-thursday-17-to-22': {
         'task': 'run_alerts',
-        'schedule': crontab(minute=0, hour='17-22', day_of_week='thu'),
+        'schedule': crontab(minute=0, hour='19-22', day_of_week='thu'),
     },
     'get-users-thursday-1650': {
         'task': 'get_users',
-        'schedule': crontab(minute=50, hour=16, day_of_week='thu'),
+        'schedule': crontab(minute=50, hour=18, day_of_week='thu'),
     },
 }
 
