@@ -31,11 +31,11 @@ app.config['broker_connection_retry_on_startup'] = True
 app.config['beat_schedule'] = {
     'get-dhis-data-every-5-minutes': {
         'task': 'run_alerts',
-        'schedule': timedelta(minutes=10)
+        'schedule': timedelta(minutes=5)
     },
     'get-users': {
         'task': 'get_users',
-        'schedule': timedelta(minutes=5)
+        'schedule': timedelta(minutes=2)
     },
 
 }
