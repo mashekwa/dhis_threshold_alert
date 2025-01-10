@@ -107,7 +107,7 @@ def fetch_users_and_save_details(dhis_url, username, password, user_group_id):
     users = get_users_in_group(dhis_url, username, password, user_group_id)
     for user in users:
         user_details = get_user_details(user["id"], dhis_url, username, password)
-        logger.info(f'TOTAL {len(user_details)} FOUND IN ALERT USER GROUP')
+        logger.info(f'TOTAL {len(users)} FOUND IN ALERT USER GROUP')
         if user_details:
             # Save the user details to the database
             save_user_to_db(user_details)
@@ -128,6 +128,7 @@ def fetch_data():
 
 
     pe = get_recent_epi_weeks(weeks)
+    logger.info(f"PERIODS PULLING FOR.....\n{pe}\n")
 
     if len(pe) > 1:
         final_pe =';'.join(pe)
