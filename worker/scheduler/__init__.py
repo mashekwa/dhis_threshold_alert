@@ -28,29 +28,29 @@ app.config['broker_connection_retry_on_startup'] = True
 
 
 #DEV SCHEDULE
-# app.config['beat_schedule'] = {
-#     'get-dhis-data-every-5-minutes': {
-#         'task': 'run_alerts',
-#         'schedule': timedelta(minutes=5)
-#     },
-#     'get-users': {
-#         'task': 'get_users',
-#         'schedule': timedelta(minutes=2)
-#     },
-
-# }
-
-# PRODUCTION SCHEDULE
 app.config['beat_schedule'] = {
-    'run-alerts-thursday-17-to-22': {
+    'get-dhis-data-every-5-minutes': {
         'task': 'run_alerts',
-        'schedule': crontab(minute=0, hour='19-22', day_of_week='thu'),
+        'schedule': timedelta(minutes=5)
     },
-    'get-users-thursday-1650': {
+    'get-users': {
         'task': 'get_users',
-        'schedule': crontab(minute=50, hour=18, day_of_week='thu'),
+        'schedule': timedelta(minutes=2)
     },
+
 }
+
+# # PRODUCTION SCHEDULE
+# app.config['beat_schedule'] = {
+#     'run-alerts-thursday-17-to-22': {
+#         'task': 'run_alerts',
+#         'schedule': crontab(minute=0, hour='19-22', day_of_week='thu'),
+#     },
+#     'get-users-thursday-1650': {
+#         'task': 'get_users',
+#         'schedule': crontab(minute=50, hour=18, day_of_week='thu'),
+#     },
+# }
 
 app.config['timezone'] = 'Africa/Harare'
 
