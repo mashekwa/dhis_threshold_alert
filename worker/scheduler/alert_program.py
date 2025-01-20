@@ -211,7 +211,7 @@ def one_suspected_case(df, dx):
     if not df_x.empty:  
 
         # Create final_df containing everything not in anthrax_endemic_df
-        final_df = df_x[~df_x.index.isin(anthrax_endemic_df.index)]
+        final_df = df_x #df_x[~df_x.index.isin(anthrax_endemic_df.index)]
            
 
         if not final_df.empty:
@@ -367,7 +367,7 @@ def get_double_cases(df, dx):
                 logger.info("No Disease Data to Alert")        
 
         else:
-            logger.info("No Disease Data to Alert")
+            logger.info("No DOUBLING OF CASES DATA \n Disease Data to Alert")
 
     return [], "No data found for the specified diseases."
 

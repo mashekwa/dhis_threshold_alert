@@ -226,6 +226,7 @@ def check_alert_in_db(disease_name, org_unit_id, week):
 # DATE EPI WEEK FUNCTION
 def get_recent_epi_weeks(weeks: int):
     today = date.today()
+    today = today - timedelta(days=11)
     
     def get_epi_week(input_date):
         # Find the first Sunday of the year
@@ -253,7 +254,7 @@ def get_recent_epi_weeks(weeks: int):
         return epi_year, epi_week
 
     def format_epi_week(year, week):
-        return f"{year}W{week:02d}"
+        return f"{year}W{week}"
 
     # Calculate the last completed Sunday (end of last epi week)
     last_sunday = today - timedelta(days=(today.weekday() + 1) % 7)
