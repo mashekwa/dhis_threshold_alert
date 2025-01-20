@@ -11,8 +11,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Monkey-patch requests to disable SSL verification globally
-# requests.packages.urllib3.disable_warnings()
-# requests.Session.verify = False
+requests.packages.urllib3.disable_warnings()
+requests.Session.verify = False
 
 # Initialize DHIS2 API
 DHIS2_BASE_URL = configs.PROD_DHIS_URL
