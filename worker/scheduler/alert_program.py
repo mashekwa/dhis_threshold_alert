@@ -263,7 +263,7 @@ def one_suspected_case(df, dx):
                     email_msg = f'<p>Suspected case(s) of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the  <b><a href="{tei_link}">eIDSR alert notification tracker</a></b> as soon as possible.</p>'
                     email_subject = f"eIDSR {alert_id}: {district}- {disease}"
 
-                    sms_msg = f'eIDSR Alert | {alert_id}: Suspected case(s) of {disease} from {district} ND2 report.'
+                    sms_msg = f'eIDSR Alert | {alert_id}: Suspected case(s) of {disease} from {district} ND2 report. {tei_link}'
 
                     # get_users_and_notify(message_template, district_uid)
                     get_users_and_notify(alert_id, district_uid, email_msg, email_subject, sms_msg, tele_msg, facility_df_with_names)
@@ -357,7 +357,7 @@ def get_double_cases(df, dx):
                         email_msg = f'<p>We have detected an unusual rise in suspected cases of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the <b><a href="{tei_link}">eIDSR alert notification tracker</a></b> as soon as possible.</p>'
                         email_subject = f"eIDSR {alert_id}: {district}- {disease}"
 
-                        sms_msg = f'eIDSR Alert | {alert_id}: Unusual rise in suspected cases of {disease} from {district} ND2 report.'
+                        sms_msg = f'eIDSR Alert | {alert_id}: Unusual rise in suspected cases of {disease} from {district} ND2 report. {tei_link}'
 
                         # get_users_and_notify(message_template, district_uid)
                         get_users_and_notify(alert_id, district_uid, email_msg, email_subject, sms_msg, tele_msg)
@@ -450,7 +450,7 @@ def check_1_5x_increase(df, dx):
                 email_msg = f'<p>We have detected an unusual rise in suspected cases of <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the <b><a href="{tei_link}">eIDSR alert notification tracker</a></b> as soon as possible.</p>'
                 email_subject = f"eIDSR {alert_id}: {district}- {disease}"
 
-                sms_msg = f'eIDSR Alert | {alert_id}: Unusual rise in suspected cases of {disease} from {district} ND2 report.'
+                sms_msg = f'eIDSR Alert | {alert_id}: Unusual rise in suspected cases of {disease} from {district} ND2 report. {tei_link}'
                 
                 # get_users_and_notify(message_template, district_uid)
                 get_users_and_notify(alert_id, district_uid, email_msg, email_subject, sms_msg, tele_msg)
@@ -533,7 +533,7 @@ def cluster_of_cases(df, disease, num):
                         email_msg = f'<p>We have detected an unusual cluster of suspected cases of  <b>{disease}</b> from your recent eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the  <b><a href="{tei_link}">eIDSR alert notification tracker</a></b> as soon as possible.</p>'
                         email_subject = f"eIDSR {alert_id}: {district}- {disease}"
 
-                        sms_msg = f'eIDSR Alert | {alert_id}: Unusual cluster in suspected cases of {disease} from {district} ND2 report.'
+                        sms_msg = f'eIDSR Alert | {alert_id}: Unusual cluster in suspected cases of {disease} from {district} ND2 report. {tei_link}'
 
                         # get_users_and_notify(message_template, district_uid)
                         get_users_and_notify(alert_id, district_uid, email_msg, email_subject, sms_msg, tele_msg, facility_df_with_names)
