@@ -384,7 +384,7 @@ def get_dhis2Id():
     DHIS2_USERNAME = configs.PROD_DHIS_USER
     DHIS2_PASSWORD = configs.PROD_DHIS_PASSWORD
     logger.info(f'FETCHING TEI ID fron DHIS2')
-    url = f'{configs.DEV_DHIS_URL}/api/system/id'
+    url = f'{configs.DEV_DHIS_URL}/api/system/id?limit=2'
     headers = {
     'Content-type': 'application/json',
     'Accept': 'application/json'
@@ -400,9 +400,10 @@ def get_dhis2Id():
         if response.status_code == 200:            
             json = response.json()
 #             print(json)
-            dhis2_id = json['codes'][0]
-            logger.info(f"TEI UID FETCHED {dhis2_id}....")
-            return dhis2_id
+            dhis2_id_1 = json['codes'][0]
+            dhis2_id_2 = json['codes'][1]
+            logger.info(f"TEI UID FETCHED {dhis2_id_1} AND {dhis2_id_2}....")
+            return dhis2_id_1, dhis2_id_2
         else:
             logger.error(f'Could not retrive DHIS2 IDs, {response.status_code}:{response.text}')            
 
@@ -429,7 +430,7 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
     alert_id = generate_alert_id()
     logger.info(f"DONE.......ALERT ID:{alert_id}")
     logger.info("######------------\n")
-    tei_id = get_dhis2Id()     
+    tei_id, enrollment_id = get_dhis2Id()     
     if tei_id: 
         logger.info(f"DONE:....TEI:{tei_id}")
         logger.info(f"DONE:....TEI:{tei_id}")    
@@ -472,6 +473,7 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
                 logger.info(f'STATUS: Posted to DHIS2 Alert Program successfully.\n {response.text}')
                 logger.info(f'STARTING ENROLMENT FOR {tei_id}......')
                 data_enroll = {
+                    "enrollment":enrollment_id,
                     "trackedEntityInstance":tei_id,
                     "program":"xDsAFnQMmeU",
                     "status":"ACTIVE",
@@ -497,7 +499,7 @@ def post_to_alert_program(org_unit_id, org_unit_name, disease_id, week):
                 except requests.exceptions.RequestException as error:
                     print(error)        
                 
-                return tei_id, alert_id
+                return tei_id, enrollment_id, alert_id
             else:
                 print(f'Could not CREATE TE in DHIS2: \n {response.text}')
 

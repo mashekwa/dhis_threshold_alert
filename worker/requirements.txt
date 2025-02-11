@@ -10,3 +10,4 @@ SQLAlchemy
 fastparquet
 pyarrow
 psycopg2
+numpy

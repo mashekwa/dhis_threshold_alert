@@ -6,6 +6,7 @@ import logging
 from .utils import send_sms, get_users_in_group, get_user_details, save_user_to_db, send_email_alert,create_email_body, create_email_body1, post_to_alert_program, get_recent_epi_weeks, check_alert_in_db, get_alert_users, fetch_aggregated_data, replace_uids_with_names
 from celery import shared_task
 from . import configs
+import numpy as np
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -94,7 +95,6 @@ def get_users_and_notify(alert_id, org_unit_id,email_msg, email_subject, sms_msg
                 
             logger.info(f"FAKE SENDING TELE MSG TO NAME: {user_name} TELEGRAM: {telegram}")
             personalized_message = personal_tele_msg.format(name=user_name)
-
             send_telegram_message.delay(telegram, personalized_message)
 
     general_tele_msg = tele_head + f'\n{tele_msg}'
@@ -169,14 +169,33 @@ def fetch_data():
 
 
 # DATA REFORMAT FUNCTION
-def get_disease_data(df, dataElements, weeks):    
-    df= df[df['dataElement'].isin(dataElements)]
-    df = df[df['pe'].isin(weeks)]
+# def get_disease_data(df, dataElements, weeks):    
+#     df= df[df['dataElement'].isin(dataElements)]
+#     df = df[df['pe'].isin(weeks)]
     
+    
+#     # Sort the DataFrame by orgUnit, dataElement, and week in descending order
+#     df_sorted = df.sort_values(by=['orgUnit', 'week'], ascending=[True, False])
+#     df_sorted['value'] = df_sorted['value'].astype(int)
+
+#     return df_sorted
+
+
+def get_disease_data(df, dataElements, weeks):    
+    df = df[df['dataElement'].isin(dataElements)]
+    df = df[df['pe'].isin(weeks)]
     
     # Sort the DataFrame by orgUnit, dataElement, and week in descending order
     df_sorted = df.sort_values(by=['orgUnit', 'week'], ascending=[True, False])
-    df_sorted['value'] = df_sorted['value'].astype(int)
+    
+    # Ensure the 'value' column is numeric, coercing errors to NaN
+    df_sorted['value'] = pd.to_numeric(df_sorted['value'], errors='coerce')
+    
+    # Drop NaN values if any remain after conversion
+    df_sorted = df_sorted.dropna(subset=['value'])
+
+    # Round down any decimal values before converting to int
+    df_sorted['value'] = np.floor(df_sorted['value']).astype(int)
 
     return df_sorted
 
@@ -241,11 +260,11 @@ def one_suspected_case(df, dx):
                 logger.info(f"POSTING TO ALERT PROGRAM...............{alert_week}")
                 check_record = check_alert_in_db(disease_name, district_uid, period)
                 if check_record >=1:
-                    logger.info('ALERT ALREADY IN DB')          
+                    logger.info('ALERT ALREADY IN DB')     
                 else:
                     logger.info('ALERT NOT IN DB')
                     #Post to DHIS2
-                    tei_id, alert_id = post_to_alert_program(district_uid, district_name, disease_id, alert_week)
+                    tei_id, enrollment_id, alert_id = post_to_alert_program(district_uid, district_name, disease_id, alert_week)
                     logger.info(f"TEI:.....{tei_id}")
                     # Get Facility level data
                     facility_data_df = fetch_aggregated_data(api, dx, pe, ou)
@@ -254,7 +273,7 @@ def one_suspected_case(df, dx):
                     disease = ' '.join(disease_name.rsplit(' ', 1)[:-1])
                     district = ' '.join(district_name.split(' ')[1:])
 
-                    tei_link = f"{configs.ALERT_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
+                    tei_link = f"{configs.ALERT_DHIS_URL}/dhis-web-capture/index.html#/enrollment?enrollmentId={enrollment_id}&orgUnitId={district_uid}&programId=xDsAFnQMmeU&teiId={tei_id}"
                     
                     # TELEGRAM MESSAGE TEMPLATE               
                     tele_msg =  f'Suspected case(s) of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \n \n {tei_link}'
@@ -342,13 +361,13 @@ def get_double_cases(df, dx):
                     else:
                         logger.info('ALERT NOT IN DB')
                         #Post to DHIS2
-                        tei_id, alert_id = post_to_alert_program(district_uid, district_name, disease_id, alert_week)
+                        tei_id, enrollment_id, alert_id= post_to_alert_program(district_uid, district_name, disease_id, alert_week)
                         logger.info(f"TEI:.....{tei_id}")
 
                         disease = ' '.join(disease_name.rsplit(' ', 1)[:-1])
                         district = ' '.join(district_name.split(' ')[1:])
                     
-                        tei_link = f"{configs.ALERT_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
+                        tei_link = f"{configs.ALERT_DHIS_URL}/dhis-web-capture/index.html#/enrollment?enrollmentId={enrollment_id}&orgUnitId={district_uid}&programId=xDsAFnQMmeU&teiId={tei_id}"
 
                         # TELEGRAM MESSAGE TEMPLATE               
                         tele_msg =  f'We have detected an unusual rise in suspected cases of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \n \n {tei_link}'
@@ -435,13 +454,13 @@ def check_1_5x_increase(df, dx):
             else:
                 logger.info('ALERT NOT IN DB.')
                 #Post to DHIS2
-                tei_id, alert_id = post_to_alert_program(district_uid, district_name, disease_id, alert_week)
+                tei_id, enrollment_id, alert_id = post_to_alert_program(district_uid, district_name, disease_id, alert_week)
                 logger.info(f"TEI:.....{tei_id}")
 
                 disease = ' '.join(disease_name.rsplit(' ', 1)[:-1])
                 district = ' '.join(district_name.split(' ')[1:])
 
-                tei_link = f"{configs.ALERT_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
+                tei_link = f"{configs.ALERT_DHIS_URL}/dhis-web-capture/index.html#/enrollment?enrollmentId={enrollment_id}&orgUnitId={district_uid}&programId=xDsAFnQMmeU&teiId={tei_id}"
                 
                 # TELEGRAM MESSAGE TEMPLATE               
                 tele_msg =  f'We have detected an unusual rise in suspected cases of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \n \n {tei_link}'
@@ -496,7 +515,7 @@ def cluster_of_cases(df, disease, num):
                 logger.info('ALERT NOT IN DB.')
                 if not alert_sent:  # Check if an alert has already been sent
                     # Post to DHIS2
-                    tei_id, alert_id = post_to_alert_program(district_uid, district_name, disease_id, alert_week)
+                    tei_id, enrollment_id, alert_id = post_to_alert_program(district_uid, district_name, disease_id, alert_week)
                     alert_sent = True  # Set the flag to True after sending the alert
                     logger.info(f"TEI:.....{tei_id}")
 
@@ -524,7 +543,7 @@ def cluster_of_cases(df, disease, num):
                         orgz = org_units_str
 
                         # Create link to the alert
-                        tei_link = f"{configs.ALERT_DHIS_URL}/dhis-web-tracker-capture/index.html#/dashboard?tei={tei_id}&program=xDsAFnQMmeU&ou={district_uid}"
+                        tei_link = f"{configs.ALERT_DHIS_URL}/dhis-web-capture/index.html#/enrollment?enrollmentId={enrollment_id}&orgUnitId={district_uid}&programId=xDsAFnQMmeU&teiId={tei_id}"
                         
                         # TELEGRAM MESSAGE TEMPLATE               
                         tele_msg =  f'We have detected an unusual cluster of suspected cases of {disease} from your recent {district} eIDSR aggregate report. Please verify this alert promptly to determine if it signals a potential outbreak. Update your verification results on the eIDSR alert notification tracker as soon as possible. \nFacilities affected: \n{orgz}. \n \n {tei_link}'
